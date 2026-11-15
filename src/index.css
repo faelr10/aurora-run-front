@@ -248,7 +248,19 @@ h2 { font-size: 22px; letter-spacing: -0.4px; }
 .map-dark .leaflet-tile-pane {
   filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9) saturate(0.15);
 }
-.map-dark .leaflet-control-attribution { background: transparent; color: #8d9791; font-size: 9px; }
+.live-map .leaflet-bottom.leaflet-right {
+  top: calc(62px + env(safe-area-inset-top));
+  bottom: auto;
+  left: 14px;
+  right: auto;
+}
+.map-dark .leaflet-control-attribution {
+  background: transparent;
+  color: rgba(244, 247, 245, 0.4);
+  font-size: 8px;
+  line-height: 1.2;
+  max-width: 140px;
+}
 .live-bar {
   position: absolute;
   z-index: 800;

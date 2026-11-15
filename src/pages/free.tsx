@@ -74,7 +74,7 @@ export function FreeRun() {
         </header>
         <div className="gps-anchor">
           <svg className="gps-stem" viewBox="0 0 100 80" preserveAspectRatio="none" aria-hidden="true">
-            <line x1="22" y1="78" x2="100" y2="2" />
+            <line x1="64" y1="78" x2="100" y2="2" />
           </svg>
           <p className="gps-chip">
             <i />
