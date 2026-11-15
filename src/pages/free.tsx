@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { RouteMap } from '@/components/route-map';
-import { useLiveActivity } from '@/hooks/use-live-activity';
+import { useLiveActivity, useRecording } from '@/hooks/use-live-activity';
 import { locationBlock, primeLocation } from '@/services/location';
 import { bindScreenAwake, lockedTrackingActive, onLockedTracking, screenLockStopsTracking } from '@/services/run-presence';
 import { deleteActivity } from '@/services/storage/database';
@@ -12,8 +12,14 @@ import type { GeoPoint } from '@/utils/geo';
 import { isReliableFix } from '@/utils/geo';
 import { formatClock, formatDistanceKm, formatPace } from '@/utils/format';
 
+const COUNTDOWN_SECONDS = 10;
+
 export function FreeRun() {
-  const live = useLiveActivity({ source: 'free', title: 'Corrida livre' });
+  const recording = useRecording();
+  const startedAt = useRef<number | null>(null);
+  const [count, setCount] = useState(COUNTDOWN_SECONDS);
+  const [armed, setArmed] = useState(() => Boolean(recording.data));
+  const live = useLiveActivity({ source: 'free', title: 'Corrida livre', enabled: armed });
   const name = useSession((state) => state.name);
   const navigate = useNavigate();
   const [fix, setFix] = useState<GeoPoint | null>(null);
@@ -26,6 +32,27 @@ export function FreeRun() {
 
   useEffect(() => onLockedTracking(setLockedTracking), []);
   useEffect(() => bindScreenAwake(), []);
+
+  useEffect(() => {
+    if (recording.isPending || armed) return;
+    if (recording.data) {
+      setArmed(true);
+      return;
+    }
+    if (startedAt.current == null) startedAt.current = Date.now();
+    const origin = startedAt.current;
+    const timer = window.setInterval(() => {
+      const left = COUNTDOWN_SECONDS - Math.floor((Date.now() - origin) / 1000);
+      if (left <= 0) {
+        setCount(0);
+        setArmed(true);
+        window.clearInterval(timer);
+        return;
+      }
+      setCount(left);
+    }, 200);
+    return () => window.clearInterval(timer);
+  }, [armed, recording.data, recording.isPending]);
 
   async function finish() {
     const activity = await live.finish();
@@ -137,6 +164,17 @@ export function FreeRun() {
           Descartar atividade
         </button>
       </section>
+      {armed ? null : (
+        <div className="countdown" role="status" aria-live="assertive">
+          <button className="summary-icon" type="button" onClick={() => navigate('/inicio')} aria-label="Voltar">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M14.5 6.5 9 12l5.5 5.5" />
+            </svg>
+          </button>
+          <p>A corrida começa em</p>
+          <strong>{count}</strong>
+        </div>
+      )}
     </main>
   );
 }

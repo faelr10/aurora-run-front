@@ -541,9 +541,16 @@ h2 { font-size: 22px; letter-spacing: -0.4px; }
 .week-metrics small { font-size: 16px; font-weight: 700; }
 .week-metrics span { color: #8d9791; font-size: 13px; }
 
-.summary { gap: 16px; padding-top: 18px; }
+.summary {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  gap: 8px;
+  padding: 12px 16px calc(96px + env(safe-area-inset-bottom));
+}
 .summary-head {
   display: grid;
+  flex: none;
   grid-template-columns: 42px 1fr 42px;
   align-items: center;
 }
@@ -585,19 +592,21 @@ h2 { font-size: 22px; letter-spacing: -0.4px; }
   text-align: left;
   font-weight: 700;
 }
-.summary-title { display: flex; flex-direction: column; gap: 4px; }
+.summary-title { display: flex; flex: none; flex-direction: column; gap: 2px; }
 .summary-title p {
   color: #d6ff3e;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.7px;
   text-transform: uppercase;
 }
-.summary-title h1 { font-size: 36px; letter-spacing: -1.2px; }
+.summary-title h1 { font-size: 28px; line-height: 1; letter-spacing: -0.8px; }
 .summary-map {
   position: relative;
-  height: 228px;
-  border-radius: 22px;
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  border-radius: 18px;
   overflow: hidden;
   background: #101412;
 }
@@ -629,15 +638,16 @@ h2 { font-size: 22px; letter-spacing: -0.4px; }
 .map-legend .start { background: #d6ff3e; }
 .map-legend .end { background: #f7faf8; }
 .summary-card {
+  flex: none;
   background: #141816;
-  border-radius: 24px;
-  padding: 18px 16px 16px;
+  border-radius: 18px;
+  padding: 12px 14px;
 }
 .summary-distance {
-  margin: 0 0 16px;
-  font-size: 56px;
+  margin: 0 0 8px;
+  font-size: 40px;
   font-weight: 700;
-  letter-spacing: -2.4px;
+  letter-spacing: -1.8px;
   line-height: 0.9;
 }
 .summary-distance small {
@@ -648,9 +658,10 @@ h2 { font-size: 22px; letter-spacing: -0.4px; }
 }
 .summary-stats { display: grid; grid-template-columns: 1.15fr 1fr 0.9fr; gap: 8px; }
 .summary-stats span { display: block; margin-bottom: 4px; color: #8d9791; font-size: 13px; }
-.summary-stats strong { font-size: 18px; letter-spacing: -0.4px; }
+.summary-stats strong { font-size: 16px; letter-spacing: -0.4px; }
 .summary-stats em { margin-left: 3px; color: #8d9791; font-style: normal; font-size: 13px; font-weight: 600; }
-.partials-card { display: flex; gap: 12px; align-items: flex-start; }
+.partials-card { display: flex; gap: 12px; align-items: center; }
+.partials-card div { min-width: 0; flex: 1; }
 .partials-card > i {
   width: 36px;
   height: 36px;
@@ -664,10 +675,11 @@ h2 { font-size: 22px; letter-spacing: -0.4px; }
 .partials-card svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 .partials-card strong { display: block; font-size: 16px; }
 .partials-card p { margin-top: 2px; color: #8d9791; font-size: 13px; line-height: 1.35; }
-.partials-card ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.partials-card ul { list-style: none; max-height: 52px; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; overflow: auto; }
 .partials-card li { display: flex; justify-content: space-between; gap: 12px; color: #c5cec8; font-size: 14px; }
 .summary-share {
-  min-height: 58px;
+  flex: none;
+  min-height: 48px;
   border: 0;
   border-radius: 999px;
   background: #d6ff3e;
@@ -680,6 +692,21 @@ h2 { font-size: 22px; letter-spacing: -0.4px; }
   font-weight: 800;
 }
 .summary-share svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.countdown {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(7, 9, 8, 0.94);
+  color: #f4f7f5;
+}
+.countdown .summary-icon { position: absolute; top: calc(16px + env(safe-area-inset-top)); left: 16px; }
+.countdown p { margin: 0; color: #d6ff3e; font-size: 15px; font-weight: 800; letter-spacing: 0.3px; }
+.countdown strong { font-size: 128px; line-height: 0.85; letter-spacing: -6px; }
 .tabbar {
   position: fixed;
   z-index: 30;

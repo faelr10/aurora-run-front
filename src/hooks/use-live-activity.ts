@@ -65,10 +65,11 @@ function rememberFix(position: GeolocationPosition): void {
   ]);
 }
 
-export function useLiveActivity(input: { source: ActivitySource; title: string; sessionId?: string | null }) {
+export function useLiveActivity(input: { source: ActivitySource; title: string; sessionId?: string | null; enabled?: boolean }) {
   const email = useSession((state) => state.email);
   const preferences = useSession((state) => state.preferences);
   const mode = useSession((state) => state.mode);
+  const enabled = input.enabled !== false;
   const queryClient = useQueryClient();
   const [state, setState] = useState<LiveState>({
     activity: null,
@@ -95,6 +96,7 @@ export function useLiveActivity(input: { source: ActivitySource; title: string; 
   }, [preferences]);
 
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     primeLocation();
     const stopPermission = onLocationPermission((permission) => {
@@ -140,7 +142,7 @@ export function useLiveActivity(input: { source: ActivitySource; title: string; 
       stopPermission();
       scheduleReleaseLockedTracking();
     };
-  }, [email, haltWatch, input.sessionId, input.source, input.title, startWatch]);
+  }, [email, enabled, haltWatch, input.sessionId, input.source, input.title, startWatch]);
 
   const pause = useCallback(async () => {
     const activity = state.activity;
