@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { RouteMap } from '@/components/route-map';
 import { useLiveActivity } from '@/hooks/use-live-activity';
 import { locationBlock, primeLocation } from '@/services/location';
+import { bindScreenAwake, lockedTrackingActive, onLockedTracking, screenLockStopsTracking } from '@/services/run-presence';
 import { deleteActivity } from '@/services/storage/database';
 import { useSession } from '@/stores/session';
 import type { Split } from '@/types/domain';
@@ -21,19 +22,10 @@ export function FreeRun() {
   const distance = live.activity?.distanceMeters ?? 0;
   const splits = live.activity?.splits ?? [];
   const precise = isReliableFix(fix ?? { accuracy: null });
+  const [lockedTracking, setLockedTracking] = useState(lockedTrackingActive);
 
-  useEffect(() => {
-    let lock: WakeLockSentinel | null = null;
-    void navigator.wakeLock
-      ?.request('screen')
-      .then((sentinel) => {
-        lock = sentinel;
-      })
-      .catch(() => undefined);
-    return () => {
-      void lock?.release();
-    };
-  }, []);
+  useEffect(() => onLockedTracking(setLockedTracking), []);
+  useEffect(() => bindScreenAwake(), []);
 
   async function finish() {
     const activity = await live.finish();
@@ -58,7 +50,11 @@ export function FreeRun() {
         : live.permission === 'denied'
           ? 'Localização bloqueada. Permita o acesso nas configurações do navegador e toque em permitir.'
           : precise
-            ? 'GPS preciso. Mantenha o app aberto para medir o percurso.'
+            ? lockedTracking
+              ? 'Pode bloquear a tela. A distância continua sendo medida.'
+              : screenLockStopsTracking()
+                ? 'Deixe a tela acesa. Bloquear o celular interrompe a medição.'
+                : 'GPS preciso. Mantenha o app aberto para medir o percurso.'
             : fix
               ? 'Localização aproximada. A distância entra quando o GPS ficar preciso.'
               : 'Buscando a localização.';

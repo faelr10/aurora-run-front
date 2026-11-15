@@ -6,6 +6,7 @@ import { createEngine, pauseEngine, resumeEngine, skip, stepProgress, stepRemain
 import { buildPlan, expandSteps } from '@/features/training/plan';
 import { useLiveActivity } from '@/hooks/use-live-activity';
 import { playCue } from '@/services/audio/cues';
+import { bindScreenAwake } from '@/services/run-presence';
 import { useSession } from '@/stores/session';
 import { formatClock, formatMeters, formatPace } from '@/utils/format';
 
@@ -40,15 +41,7 @@ function GuidedRun() {
   const finishRef = useRef(live.finish);
   const step = steps[engine.stepIndex];
 
-  useEffect(() => {
-    let lock: WakeLockSentinel | null = null;
-    void navigator.wakeLock?.request('screen').then((sentinel) => {
-      lock = sentinel;
-    }).catch(() => undefined);
-    return () => {
-      void lock?.release();
-    };
-  }, []);
+  useEffect(() => bindScreenAwake(), []);
 
   useEffect(() => {
     preferencesRef.current = preferences;

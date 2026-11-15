@@ -1,3 +1,5 @@
+import { retainLockedTracking } from '@/services/run-presence';
+
 export type LocationPermission = 'unknown' | 'granted' | 'denied' | 'blocked';
 
 type FixListener = (position: GeolocationPosition) => void;
@@ -76,6 +78,7 @@ export function primeLocation(): void {
     latest = null;
     emitPermission('unknown');
   }
+  retainLockedTracking();
   ensureWatch();
 }
 

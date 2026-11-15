@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { announceKilometer } from '@/services/audio/cues';
 import { syncActivities } from '@/services/api/sync';
 import { locationBlock, onLocationPermission, primeLocation, readLocationPermission, subscribeFixes, type LocationPermission } from '@/services/location';
+import { releaseLockedTracking, scheduleReleaseLockedTracking } from '@/services/run-presence';
 import {
   finishRecording,
   getActivity,
@@ -137,12 +138,14 @@ export function useLiveActivity(input: { source: ActivitySource; title: string; 
       clearInterval(timer);
       haltWatch();
       stopPermission();
+      scheduleReleaseLockedTracking();
     };
   }, [email, haltWatch, input.sessionId, input.source, input.title, startWatch]);
 
   const pause = useCallback(async () => {
     const activity = state.activity;
     if (!activity || activity.status !== 'recording') return;
+    releaseLockedTracking();
     haltWatch();
     await pauseRecording(activity.clientId, liveMovingSeconds(activity));
     const next = await getActivity(activity.clientId);
@@ -152,8 +155,8 @@ export function useLiveActivity(input: { source: ActivitySource; title: string; 
   const resume = useCallback(async () => {
     const activity = state.activity;
     if (!activity || activity.status !== 'paused') return;
-    await resumeRecording(activity.clientId, new Date().toISOString());
     primeLocation();
+    await resumeRecording(activity.clientId, new Date().toISOString());
     startWatch();
     const next = await getActivity(activity.clientId);
     setState((current) => ({ ...current, activity: next }));
@@ -162,6 +165,7 @@ export function useLiveActivity(input: { source: ActivitySource; title: string; 
   const finish = useCallback(async (): Promise<Activity | null> => {
     const activity = state.activity ?? (clientIdRef.current ? await getActivity(clientIdRef.current) : null);
     if (!activity) return null;
+    releaseLockedTracking();
     haltWatch();
     const moving = liveMovingSeconds(activity);
     await finishRecording(activity.clientId, moving, new Date().toISOString());
