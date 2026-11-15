@@ -12,13 +12,14 @@ type RouteMapProps = {
   follow?: boolean;
   searching?: boolean;
   dark?: boolean;
+  ends?: boolean;
   height?: number | 'fill';
   onLive?: (fix: GeoPoint | null) => void;
 };
 
 const CLOSE_ZOOM = 18;
 
-export function RouteMap({ points, follow = false, searching = true, dark = false, height = 220, onLive }: RouteMapProps) {
+export function RouteMap({ points, follow = false, searching = true, dark = false, ends = false, height = 220, onLive }: RouteMapProps) {
   const nodeRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
@@ -49,7 +50,7 @@ export function RouteMap({ points, follow = false, searching = true, dark = fals
       mapRef.current = null;
       layerRef.current = null;
     };
-  }, [dark]);
+  }, []);
 
   useEffect(() => {
     if (!follow) return;
@@ -74,7 +75,7 @@ export function RouteMap({ points, follow = false, searching = true, dark = fals
     if (route.length > 1) {
       L.polyline(
         route.map((point) => [point.latitude, point.longitude] as [number, number]),
-        { color: dark ? '#D6FF3E' : '#14B86A', weight: 4 },
+        { color: dark ? '#D6FF3E' : '#14B86A', weight: ends ? 5 : 4, lineCap: 'round', lineJoin: 'round' },
       ).addTo(layer);
     }
     const marker = follow
@@ -112,13 +113,37 @@ export function RouteMap({ points, follow = false, searching = true, dark = fals
         map.panTo(marker);
       }
     } else if (!follow && route.length > 0) {
-      map.fitBounds(
-        route.map((point) => [point.latitude, point.longitude] as [number, number]),
-        { padding: [24, 24] },
-      );
+      const start = route[0];
+      const finish = route[route.length - 1];
+      if (ends) {
+        L.circleMarker([start.latitude, start.longitude], {
+          radius: 7,
+          color: '#141816',
+          weight: 2,
+          fillColor: '#d6ff3e',
+          fillOpacity: 1,
+        }).addTo(layer);
+        if (route.length > 1) {
+          L.circleMarker([finish.latitude, finish.longitude], {
+            radius: 7,
+            color: '#141816',
+            weight: 2,
+            fillColor: '#f7faf8',
+            fillOpacity: 1,
+          }).addTo(layer);
+        }
+      }
+      if (route.length > 1) {
+        map.fitBounds(
+          route.map((point) => [point.latitude, point.longitude] as [number, number]),
+          { padding: [32, 32], maxZoom: 17 },
+        );
+      } else {
+        map.setView([start.latitude, start.longitude], 16);
+      }
     }
     map.invalidateSize();
-  }, [dark, follow, latest, live, route]);
+  }, [dark, ends, follow, latest, live, route]);
 
   const precise = isReliableFix({ accuracy: live?.accuracy ?? latest?.accuracy ?? null });
 

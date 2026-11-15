@@ -543,7 +543,145 @@ h2 { font-size: 22px; letter-spacing: -0.4px; }
 .week-metrics small { font-size: 16px; font-weight: 700; }
 .week-metrics span { color: #8d9791; font-size: 13px; }
 
-.tabbar {
+.summary { gap: 16px; padding-top: 18px; }
+.summary-head {
+  display: grid;
+  grid-template-columns: 42px 1fr 42px;
+  align-items: center;
+}
+.summary-head > p {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1.8px;
+}
+.summary-icon {
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 21px;
+  background: #161b18;
+  color: #f4f7f5;
+  display: grid;
+  place-items: center;
+}
+.summary-icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.summary-more { position: relative; }
+.summary-menu {
+  position: absolute;
+  z-index: 6;
+  top: 48px;
+  right: 0;
+  min-width: 168px;
+  padding: 6px;
+  border-radius: 14px;
+  background: #1c221e;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+}
+.summary-menu button {
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 700;
+}
+.summary-title { display: flex; flex-direction: column; gap: 4px; }
+.summary-title p {
+  color: #d6ff3e;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+.summary-title h1 { font-size: 36px; letter-spacing: -1.2px; }
+.summary-map {
+  position: relative;
+  height: 228px;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #101412;
+}
+.summary-map .map-frame { border-radius: 22px; }
+.summary-map .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9) saturate(0.15);
+}
+.summary-map .leaflet-control-attribution {
+  background: rgba(12, 14, 11, 0.72);
+  color: #c5cec8;
+  font-size: 9px;
+}
+.map-legend {
+  position: absolute;
+  z-index: 800;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 14px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(12, 14, 11, 0.9);
+  font-size: 13px;
+  font-weight: 700;
+}
+.map-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.map-legend i { width: 8px; height: 8px; border-radius: 50%; }
+.map-legend .start { background: #d6ff3e; }
+.map-legend .end { background: #f7faf8; }
+.summary-card {
+  background: #141816;
+  border-radius: 24px;
+  padding: 18px 16px 16px;
+}
+.summary-distance {
+  margin: 0 0 16px;
+  font-size: 56px;
+  font-weight: 700;
+  letter-spacing: -2.4px;
+  line-height: 0.9;
+}
+.summary-distance small {
+  margin-left: 6px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.summary-stats { display: grid; grid-template-columns: 1.15fr 1fr 0.9fr; gap: 8px; }
+.summary-stats span { display: block; margin-bottom: 4px; color: #8d9791; font-size: 13px; }
+.summary-stats strong { font-size: 18px; letter-spacing: -0.4px; }
+.summary-stats em { margin-left: 3px; color: #8d9791; font-style: normal; font-size: 13px; font-weight: 600; }
+.partials-card { display: flex; gap: 12px; align-items: flex-start; }
+.partials-card > i {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: #22281f;
+  color: #d6ff3e;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.partials-card svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.partials-card strong { display: block; font-size: 16px; }
+.partials-card p { margin-top: 2px; color: #8d9791; font-size: 13px; line-height: 1.35; }
+.partials-card ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.partials-card li { display: flex; justify-content: space-between; gap: 12px; color: #c5cec8; font-size: 14px; }
+.summary-share {
+  min-height: 58px;
+  border: 0;
+  border-radius: 999px;
+  background: #d6ff3e;
+  color: #101412;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 800;
+}
+.summary-share svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   position: fixed;
   z-index: 30;
   left: 50%;

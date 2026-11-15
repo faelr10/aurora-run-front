@@ -37,12 +37,12 @@ export default function App() {
           <Route path="/plano" element={<Plan />} />
           <Route path="/evolucao" element={<Progress />} />
           <Route path="/perfil" element={<Profile />} />
+          <Route path="/atividade/:activityId" element={<ActivityDetail />} />
+          <Route path="/atividade/:activityId/concluida" element={<ActivityDone />} />
         </Route>
         <Route path="/corrida" element={<FreeRun />} />
         <Route path="/treino/:sessionId" element={<Workout />} />
         <Route path="/treino/:sessionId/guiado" element={<Guided />} />
-        <Route path="/atividade/:activityId" element={<ActivityDetail />} />
-        <Route path="/atividade/:activityId/concluida" element={<ActivityDone />} />
         <Route path="/avisos" element={<Notifications />} />
         <Route path="*" element={<Navigate to="/inicio" replace />} />
       </Routes>

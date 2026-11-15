@@ -49,15 +49,15 @@ export function FreeRun() {
         ? 'Este aplicativo bloqueia o GPS. Abra o link no Chrome ou no Safari.'
         : live.permission === 'denied'
           ? 'Localização bloqueada. Permita o acesso nas configurações do navegador e toque em permitir.'
-          : precise
-            ? lockedTracking
-              ? 'Pode bloquear a tela. A distância continua sendo medida.'
-              : screenLockStopsTracking()
-                ? 'Deixe a tela acesa. Bloquear o celular interrompe a medição.'
-                : 'GPS preciso. Mantenha o app aberto para medir o percurso.'
-            : fix
-              ? 'Localização aproximada. A distância entra quando o GPS ficar preciso.'
-              : 'Buscando a localização.';
+          : precise && lockedTracking
+            ? 'Pode bloquear a tela. A distância continua sendo medida.'
+            : precise && screenLockStopsTracking()
+              ? null
+              : precise
+                ? 'GPS preciso. Mantenha o app aberto para medir o percurso.'
+                : fix
+                  ? 'Localização aproximada. A distância entra quando o GPS ficar preciso.'
+                  : 'Buscando a localização.';
 
   return (
     <main className="live-run">
@@ -81,20 +81,22 @@ export function FreeRun() {
             {initial}
           </div>
         </header>
-        <div className="gps-anchor">
-          <svg className="gps-stem" viewBox="0 0 100 80" preserveAspectRatio="none" aria-hidden="true">
-            <line x1="64" y1="78" x2="100" y2="2" />
-          </svg>
-          <div className="gps-chip">
-            <i />
-            <span>{gps}</span>
-            {live.permission === 'denied' && !block ? (
-              <button className="gps-allow" type="button" onClick={() => primeLocation()}>
-                Permitir localização
-              </button>
-            ) : null}
+        {gps ? (
+          <div className="gps-anchor">
+            <svg className="gps-stem" viewBox="0 0 100 80" preserveAspectRatio="none" aria-hidden="true">
+              <line x1="64" y1="78" x2="100" y2="2" />
+            </svg>
+            <div className="gps-chip">
+              <i />
+              <span>{gps}</span>
+              {live.permission === 'denied' && !block ? (
+                <button className="gps-allow" type="button" onClick={() => primeLocation()}>
+                  Permitir localização
+                </button>
+              ) : null}
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
 
       <section className="live-sheet">

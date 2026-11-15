@@ -1,8 +1,11 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 
 import { primeLocation } from '@/services/location';
 
 export function Shell() {
+  const location = useLocation();
+  const evolution = location.pathname === '/evolucao' || location.pathname.startsWith('/atividade');
+
   return (
     <div className="shell">
       <Outlet />
@@ -20,7 +23,7 @@ export function Shell() {
             <path d="M9 6.8v10.4L18 12z" />
           </svg>
         </NavLink>
-        <NavLink to="/evolucao" className={({ isActive }) => (isActive ? 'tab active' : 'tab')}>
+        <NavLink to="/evolucao" className={evolution ? 'tab active' : 'tab'}>
           <ChartIcon />
           <span>Evolução</span>
         </NavLink>
