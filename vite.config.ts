@@ -15,9 +15,9 @@ function devHosts(): string[] {
   return [...hosts];
 }
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [
-    basicSsl({ name: 'aurora-run', domains: devHosts() }),
+    ...(command === 'serve' ? [basicSsl({ name: 'aurora-run', domains: devHosts() })] : []),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
@@ -49,4 +49,4 @@ export default defineConfig({
     },
   },
   server: { port: 5173 },
-});
+}));

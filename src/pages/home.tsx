@@ -50,11 +50,6 @@ export function Home() {
         </Link>
       </header>
 
-      <h1 className="hello">
-        {firstName ? `Fala, ${firstName}.` : 'Fala.'}
-        <span>Bora correr?</span>
-      </h1>
-
       {open ? (
         <section className="resume-card">
           <p className="pill">{paused ? 'Pausada' : 'Em movimento'}</p>
