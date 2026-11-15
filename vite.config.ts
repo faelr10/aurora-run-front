@@ -1,10 +1,23 @@
+import basicSsl from '@vitejs/plugin-basic-ssl';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { networkInterfaces } from 'node:os';
 import { fileURLToPath, URL } from 'node:url';
+
+function devHosts(): string[] {
+  const hosts = new Set(['localhost', '127.0.0.1']);
+  for (const entries of Object.values(networkInterfaces())) {
+    for (const entry of entries ?? []) {
+      if (entry.family === 'IPv4' && !entry.internal) hosts.add(entry.address);
+    }
+  }
+  return [...hosts];
+}
 
 export default defineConfig({
   plugins: [
+    basicSsl({ name: 'aurora-run', domains: devHosts() }),
     react(),
     VitePWA({
       registerType: 'autoUpdate',

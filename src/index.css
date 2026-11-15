@@ -314,10 +314,11 @@ h2 { font-size: 22px; letter-spacing: -0.4px; }
   position: absolute;
   left: 16px;
   bottom: 0;
-  max-width: min(270px, calc(100% - 32px));
+  max-width: min(280px, calc(100% - 32px));
   margin: 0;
   display: flex;
   align-items: flex-start;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 12px 14px;
   border-radius: 18px;
@@ -328,6 +329,17 @@ h2 { font-size: 22px; letter-spacing: -0.4px; }
   font-weight: 600;
   pointer-events: auto;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+}
+.gps-allow {
+  flex: 1 0 100%;
+  border: 0;
+  border-radius: 999px;
+  background: #d6ff3e;
+  color: #141816;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 8px 12px;
 }
 .gps-chip i { width: 8px; height: 8px; margin-top: 5px; border-radius: 50%; background: #d6ff3e; flex: none; }
 .live-sheet {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 
+import { subscribeFixes } from '@/services/location';
 import type { TrackPoint } from '@/types/domain';
 import { isReliableFix, preferLiveFix, type GeoPoint } from '@/utils/geo';
 
@@ -51,8 +52,8 @@ export function RouteMap({ points, follow = false, searching = true, dark = fals
   }, [dark]);
 
   useEffect(() => {
-    if (!follow || !navigator.geolocation) return;
-    function publish(position: GeolocationPosition) {
+    if (!follow) return;
+    return subscribeFixes((position) => {
       const { latitude, longitude, accuracy } = position.coords;
       if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
       const next: LiveFix = {
@@ -62,18 +63,7 @@ export function RouteMap({ points, follow = false, searching = true, dark = fals
         timestamp: position.timestamp,
       };
       setLive((current) => preferLiveFix(current, next));
-    }
-    navigator.geolocation.getCurrentPosition(publish, () => undefined, {
-      enableHighAccuracy: false,
-      maximumAge: 60_000,
-      timeout: 8_000,
     });
-    const watch = navigator.geolocation.watchPosition(publish, () => undefined, {
-      enableHighAccuracy: true,
-      maximumAge: 0,
-      timeout: 20_000,
-    });
-    return () => navigator.geolocation.clearWatch(watch);
   }, [follow]);
 
   useEffect(() => {

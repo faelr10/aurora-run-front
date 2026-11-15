@@ -1,5 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 
+import { primeLocation } from '@/services/location';
+
 export function Shell() {
   return (
     <div className="shell">
@@ -13,7 +15,7 @@ export function Shell() {
           <PlanIcon />
           <span>Plano</span>
         </NavLink>
-        <NavLink to="/corrida" className="run-tab" aria-label="Correr">
+        <NavLink to="/corrida" className="run-tab" aria-label="Correr" onClick={() => primeLocation()}>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M9 6.8v10.4L18 12z" />
           </svg>

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { announceKilometer } from '@/services/audio/cues';
 import { syncActivities } from '@/services/api/sync';
+import { locationBlock, onLocationPermission, primeLocation, readLocationPermission, subscribeFixes, type LocationPermission } from '@/services/location';
 import {
   finishRecording,
   getActivity,
@@ -47,46 +48,20 @@ export function useRecording() {
 
 type LiveState = {
   activity: Activity | null;
-  permission: 'unknown' | 'granted' | 'denied';
+  permission: LocationPermission;
   now: number;
 };
 
-let watchId: number | null = null;
-
-function startWatch(): void {
-  if (watchId != null || !navigator.geolocation) return;
-  watchId = navigator.geolocation.watchPosition(
-    (position) => {
-      void recordFixes([
-        {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: position.coords.accuracy,
-          timestamp: position.timestamp,
-          speed: position.coords.speed,
-        },
-      ]);
+function rememberFix(position: GeolocationPosition): void {
+  void recordFixes([
+    {
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude,
+      accuracy: position.coords.accuracy,
+      timestamp: position.timestamp,
+      speed: position.coords.speed,
     },
-    () => undefined,
-    { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 },
-  );
-}
-
-function stopWatch(): void {
-  if (watchId == null || !navigator.geolocation) return;
-  navigator.geolocation.clearWatch(watchId);
-  watchId = null;
-}
-
-function requestLocation(): Promise<'granted' | 'denied'> {
-  if (!navigator.geolocation) return Promise.resolve('denied');
-  return new Promise((resolve) => {
-    navigator.geolocation.getCurrentPosition(
-      () => resolve('granted'),
-      () => resolve('denied'),
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 12_000 },
-    );
-  });
+  ]);
 }
 
 export function useLiveActivity(input: { source: ActivitySource; title: string; sessionId?: string | null }) {
@@ -96,12 +71,23 @@ export function useLiveActivity(input: { source: ActivitySource; title: string; 
   const queryClient = useQueryClient();
   const [state, setState] = useState<LiveState>({
     activity: null,
-    permission: 'unknown',
+    permission: readLocationPermission(),
     now: 0,
   });
   const announcedKm = useRef(0);
   const preferencesRef = useRef(preferences);
   const clientIdRef = useRef<string | null>(null);
+  const watchRef = useRef<(() => void) | null>(null);
+
+  const startWatch = useCallback(() => {
+    if (watchRef.current || locationBlock()) return;
+    watchRef.current = subscribeFixes(rememberFix);
+  }, []);
+
+  const haltWatch = useCallback(() => {
+    watchRef.current?.();
+    watchRef.current = null;
+  }, []);
 
   useEffect(() => {
     preferencesRef.current = preferences;
@@ -109,6 +95,10 @@ export function useLiveActivity(input: { source: ActivitySource; title: string; 
 
   useEffect(() => {
     let cancelled = false;
+    primeLocation();
+    const stopPermission = onLocationPermission((permission) => {
+      if (!cancelled) setState((current) => ({ ...current, permission }));
+    });
     async function start() {
       if (!email) return;
       const clientId = await insertRecording({
@@ -123,11 +113,8 @@ export function useLiveActivity(input: { source: ActivitySource; title: string; 
       const activity = await getActivity(clientId);
       if (cancelled) return;
       announcedKm.current = activity?.splits.length ?? 0;
-      setState({ activity, permission: 'unknown', now: Date.now() });
-      const permission = await requestLocation();
-      if (cancelled) return;
-      if (permission === 'granted' && activity?.status === 'recording') startWatch();
-      setState((current) => ({ ...current, permission }));
+      setState((current) => ({ ...current, activity, now: Date.now() }));
+      if (activity?.status === 'recording') startWatch();
     }
     void start();
     const timer = setInterval(() => {
@@ -148,32 +135,34 @@ export function useLiveActivity(input: { source: ActivitySource; title: string; 
     return () => {
       cancelled = true;
       clearInterval(timer);
-      stopWatch();
+      haltWatch();
+      stopPermission();
     };
-  }, [email, input.sessionId, input.source, input.title]);
+  }, [email, haltWatch, input.sessionId, input.source, input.title, startWatch]);
 
   const pause = useCallback(async () => {
     const activity = state.activity;
     if (!activity || activity.status !== 'recording') return;
-    stopWatch();
+    haltWatch();
     await pauseRecording(activity.clientId, liveMovingSeconds(activity));
     const next = await getActivity(activity.clientId);
     setState((current) => ({ ...current, activity: next }));
-  }, [state.activity]);
+  }, [haltWatch, state.activity]);
 
   const resume = useCallback(async () => {
     const activity = state.activity;
     if (!activity || activity.status !== 'paused') return;
     await resumeRecording(activity.clientId, new Date().toISOString());
-    if (state.permission === 'granted') startWatch();
+    primeLocation();
+    startWatch();
     const next = await getActivity(activity.clientId);
     setState((current) => ({ ...current, activity: next }));
-  }, [state.activity, state.permission]);
+  }, [startWatch, state.activity]);
 
   const finish = useCallback(async (): Promise<Activity | null> => {
     const activity = state.activity ?? (clientIdRef.current ? await getActivity(clientIdRef.current) : null);
     if (!activity) return null;
-    stopWatch();
+    haltWatch();
     const moving = liveMovingSeconds(activity);
     await finishRecording(activity.clientId, moving, new Date().toISOString());
     const next = await getActivity(activity.clientId);
@@ -181,7 +170,7 @@ export function useLiveActivity(input: { source: ActivitySource; title: string; 
     await queryClient.invalidateQueries({ queryKey: ['recording'] });
     if (email && mode === 'remote') void syncActivities(email).catch(() => undefined);
     return next;
-  }, [email, mode, queryClient, state.activity]);
+  }, [email, haltWatch, mode, queryClient, state.activity]);
 
   const activity = state.activity;
   const movingSeconds = activity ? liveMovingSeconds(activity, state.now) : 0;

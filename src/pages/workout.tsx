@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 
 import { Locked } from '@/components/locked';
 import { buildPlan, expandSteps } from '@/features/training/plan';
+import { primeLocation } from '@/services/location';
 import { useSession } from '@/stores/session';
 import type { RuntimeStep, WorkoutType } from '@/types/domain';
 import { formatClock, formatDayMonth, formatDistanceKm, formatMeters, formatPace } from '@/utils/format';
@@ -88,7 +89,7 @@ export function Workout() {
         <p className="eyebrow">COMO EXECUTAR</p>
         <p>{steps[0]?.cue ?? session.objective}</p>
       </section>
-      <Link className="btn primary" to={`/treino/${session.id}/guiado`}>
+      <Link className="btn primary" to={`/treino/${session.id}/guiado`} onClick={() => primeLocation()}>
         Começar treino
       </Link>
     </main>

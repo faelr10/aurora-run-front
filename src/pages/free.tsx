@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { RouteMap } from '@/components/route-map';
 import { useLiveActivity } from '@/hooks/use-live-activity';
+import { locationBlock, primeLocation } from '@/services/location';
 import { deleteActivity } from '@/services/storage/database';
 import { useSession } from '@/stores/session';
 import type { Split } from '@/types/domain';
@@ -48,19 +49,31 @@ export function FreeRun() {
     navigate('/inicio');
   }
 
+  const block = locationBlock();
   const gps =
-    live.permission === 'denied'
-      ? 'Localização desativada. A distância não será medida.'
-      : precise
-        ? 'GPS preciso. Mantenha o app aberto para medir o percurso.'
-        : fix
-          ? 'Localização aproximada. A distância entra quando o GPS ficar preciso.'
-          : 'Buscando a localização.';
+    block === 'http'
+      ? 'O celular bloqueia a localização em links http. Abra o app em um endereço https.'
+      : block === 'in-app'
+        ? 'Este aplicativo bloqueia o GPS. Abra o link no Chrome ou no Safari.'
+        : live.permission === 'denied'
+          ? 'Localização bloqueada. Permita o acesso nas configurações do navegador e toque em permitir.'
+          : precise
+            ? 'GPS preciso. Mantenha o app aberto para medir o percurso.'
+            : fix
+              ? 'Localização aproximada. A distância entra quando o GPS ficar preciso.'
+              : 'Buscando a localização.';
 
   return (
     <main className="live-run">
       <div className="live-map">
-        <RouteMap points={live.activity?.points ?? []} follow dark height="fill" searching={live.permission !== 'denied'} onLive={setFix} />
+        <RouteMap
+          points={live.activity?.points ?? []}
+          follow
+          dark
+          height="fill"
+          searching={live.permission === 'unknown' || live.permission === 'granted'}
+          onLive={setFix}
+        />
         <header className="live-bar">
           <button className="live-icon" type="button" onClick={() => navigate('/inicio')} aria-label="Voltar">
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -76,10 +89,15 @@ export function FreeRun() {
           <svg className="gps-stem" viewBox="0 0 100 80" preserveAspectRatio="none" aria-hidden="true">
             <line x1="64" y1="78" x2="100" y2="2" />
           </svg>
-          <p className="gps-chip">
+          <div className="gps-chip">
             <i />
             <span>{gps}</span>
-          </p>
+            {live.permission === 'denied' && !block ? (
+              <button className="gps-allow" type="button" onClick={() => primeLocation()}>
+                Permitir localização
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
 

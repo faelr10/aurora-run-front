@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { totals } from '@/features/history/stats';
 import { useActivities, useRecording } from '@/hooks/use-live-activity';
+import { primeLocation } from '@/services/location';
 import { useSession } from '@/stores/session';
 import { formatDistanceKm, formatDuration, formatWeekday, mondayOf, parseDateKey, toDateKey } from '@/utils/format';
 
@@ -24,6 +25,7 @@ export function Home() {
   const open = Boolean(recording.data);
 
   function resume() {
+    primeLocation();
     if (recording.data?.source === 'guided' && recording.data.sessionId) {
       navigate(`/treino/${recording.data.sessionId}/guiado`);
       return;
@@ -72,7 +74,14 @@ export function Home() {
           <p className="pill">Agora</p>
           <h2>Pronto para sair.</h2>
           <p>Sem plano e sem meta. A corrida começa quando você começar.</p>
-          <button className="resume" type="button" onClick={() => navigate('/corrida')}>
+          <button
+            className="resume"
+            type="button"
+            onClick={() => {
+              primeLocation();
+              navigate('/corrida');
+            }}
+          >
             Começar corrida
             <span aria-hidden="true">
               <svg viewBox="0 0 24 24">
@@ -92,7 +101,7 @@ export function Home() {
           <strong>Monte seu plano</strong>
           <span>Treinos guiados em 2 minutos.</span>
         </Link>
-        <Link className="shortcut" to="/corrida">
+        <Link className="shortcut" to="/corrida" onClick={() => primeLocation()}>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="6" cy="17" r="2.2" />
             <circle cx="17" cy="7" r="2.2" />

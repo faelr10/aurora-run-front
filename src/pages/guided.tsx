@@ -135,7 +135,7 @@ function GuidedRun() {
             <p>TEMPO</p>
           </div>
         </div>
-        {step.target.type === 'distance' && live.permission !== 'granted' ? (
+        {step.target.type === 'distance' && (live.permission === 'denied' || live.permission === 'blocked') ? (
           <p className="warning">GPS INDISPONÍVEL · USE PULAR ETAPA PARA CONTINUAR</p>
         ) : null}
         <div className="run-actions">
