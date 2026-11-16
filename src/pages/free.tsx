@@ -98,7 +98,14 @@ export function FreeRun() {
           onLive={setFix}
         />
         <header className="live-bar">
-          <button className="live-icon" type="button" onClick={() => navigate('/inicio')} aria-label="Voltar">
+          <button
+            className="live-icon"
+            type="button"
+            onClick={() => {
+              void live.pause().then(() => navigate('/inicio'));
+            }}
+            aria-label="Voltar"
+          >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M6 9l6 6 6-6" />
             </svg>

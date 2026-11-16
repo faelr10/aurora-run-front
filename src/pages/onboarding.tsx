@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { onboardingSchema, type OnboardingValues } from '@/features/onboarding/schema';
-import { answerAt, planQuestions } from '@/features/onboarding/steps';
+import { planQuestions, questionsFor } from '@/features/onboarding/steps';
 import { useSession } from '@/stores/session';
 
 export function Onboarding() {
@@ -10,20 +10,15 @@ export function Onboarding() {
   const navigate = useNavigate();
   const [index, setIndex] = useState(0);
   const [values, setValues] = useState<Partial<OnboardingValues>>({});
-  const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [building, setBuilding] = useState(false);
   const [answers, setAnswers] = useState<OnboardingValues | null>(null);
-  const question = planQuestions[index];
+  const questions = questionsFor(values);
+  const question = questions[index];
 
-  function show(nextIndex: number, nextValues: Partial<OnboardingValues>) {
-    const next = planQuestions[nextIndex];
+  function show(nextIndex: number) {
     setIndex(nextIndex);
     setError(null);
-    if (next?.kind === 'number') {
-      const stored = answerAt(nextValues, next.field);
-      setDraft(stored == null ? '' : next.display(stored));
-    }
   }
 
   async function finish(nextValues: OnboardingValues) {
@@ -38,29 +33,23 @@ export function Onboarding() {
     }
   }
 
-  function commitNumber() {
-    if (!question || question.kind !== 'number') return;
-    const parsed = Number(draft.replace(',', '.').trim());
-    if (!Number.isFinite(parsed)) {
-      setError('Informe um número.');
-      return;
+  function choose(value: number | OnboardingValues['level']) {
+    if (!question || question.kind !== 'choice') return;
+    const next: Partial<OnboardingValues> = { ...values };
+    if (question.field === 'level') {
+      if (value !== 'beginner' && value !== 'intermediate' && value !== 'advanced') return;
+      next.level = value;
+    } else if (typeof value === 'number') {
+      next[question.field] = value;
     }
-    const value = question.convert(parsed);
-    if (value == null) {
-      setError(question.error);
-      return;
-    }
-    const next = { ...values, [question.field]: value };
     setValues(next);
+    if (question.field === 'currentDistanceMeters' && next.currentDistanceMeters !== values.currentDistanceMeters) {
+      delete next.currentDurationSeconds;
+    }
     if (index < planQuestions.length - 1) {
-      show(index + 1, next);
+      show(index + 1);
       return;
     }
-  }
-
-  function chooseLevel(value: OnboardingValues['level']) {
-    const next = { ...values, level: value };
-    setValues(next);
     const parsed = onboardingSchema.safeParse(next);
     if (!parsed.success) {
       setError('Faltou alguma resposta.');
@@ -100,7 +89,7 @@ export function Onboarding() {
   return (
     <main className="screen auth-screen">
       <div className="row-between">
-        <button className="back" type="button" onClick={() => (index === 0 ? navigate('/inicio') : show(index - 1, values))}>
+        <button className="back" type="button" onClick={() => (index === 0 ? navigate('/inicio') : show(index - 1))}>
           Voltar
         </button>
         <p className="eyebrow">
@@ -111,39 +100,18 @@ export function Onboarding() {
         <h1>{question.title}</h1>
         <p className="muted">{question.subtitle}</p>
       </div>
-      {question.kind === 'number' ? (
-        <form
-          className="form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            commitNumber();
-          }}
-        >
-          <label>
-            {question.unit}
-            <input inputMode="decimal" placeholder={question.placeholder} value={draft} onChange={(event) => setDraft(event.target.value)} />
-          </label>
-          {error ? <p className="error">{error}</p> : null}
-          <button className="btn primary" type="submit">
-            Continuar
-          </button>
-        </form>
-      ) : (
-        <>
-          <div className="options">
-            {question.options.map((option) => {
-              const selected = values.level === option.value;
-              return (
-                <button key={option.value} className={selected ? 'option selected' : 'option'} type="button" onClick={() => chooseLevel(option.value)}>
-                  <strong>{option.label}</strong>
-                  <span>{option.description}</span>
-                </button>
-              );
-            })}
-          </div>
-          {error ? <p className="error">{error}</p> : null}
-        </>
-      )}
+      <div className="options">
+        {question.options.map((option) => {
+          const selected = values[question.field] === option.value;
+          return (
+            <button key={option.label} className={selected ? 'option selected' : 'option'} type="button" onClick={() => choose(option.value)}>
+              <strong>{option.label}</strong>
+              {option.description ? <span>{option.description}</span> : null}
+            </button>
+          );
+        })}
+      </div>
+      {error ? <p className="error">{error}</p> : null}
     </main>
   );
 }

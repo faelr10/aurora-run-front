@@ -45,7 +45,8 @@ export function Plan() {
 
   const doneCount = stage.workouts.filter((workout) => workout.completedOn).length;
   const remaining = stage.workouts.length - doneCount;
-  const nextId = stage.workouts.find((workout) => !workout.completedOn)?.id;
+  const stageLocked = !finished && selected > active;
+  const nextId = stageLocked ? undefined : stage.workouts.find((workout) => !workout.completedOn)?.id;
   const days = new Set(stages.flatMap((item) => item.workouts.map((workout) => workout.completedOn).filter((day): day is string => Boolean(day)))).size;
 
   return (
@@ -72,9 +73,8 @@ export function Plan() {
           return (
             <button
               key={item.id}
-              className={on ? 'on' : done ? 'done' : locked ? 'locked' : undefined}
+              className={[on ? 'on' : '', done ? 'done' : '', locked ? 'locked' : ''].filter(Boolean).join(' ') || undefined}
               type="button"
-              disabled={locked}
               onClick={() => setSelected(index)}
             >
               {done && !on ? <Check /> : null}
@@ -95,6 +95,8 @@ export function Plan() {
           <Trophy />
         </div>
       </section>
+
+      {stageLocked ? <p className="muted">Dá para ver os treinos. O início libera quando a etapa atual terminar.</p> : null}
 
       <ol className="journey">
         {stage.workouts.map((workout) => {
@@ -118,7 +120,7 @@ export function Plan() {
                 {state === 'done' ? null : <p>{workout.objective}</p>}
                 <p className="meta">
                   {distance} · {workout.durationMinutes} min
-                  {state === 'wait' ? (
+                  {state === 'wait' && !stageLocked ? (
                     <button type="button" onClick={() => void mark(workout)}>
                       <Check /> Marcar como feito
                     </button>

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { Locked } from '@/components/locked';
-import { WORKOUT_LABEL, WORKOUT_POINTS, findWorkout, intervalCount, workoutTimeline } from '@/features/training/plan';
+import { WORKOUT_LABEL, WORKOUT_POINTS, findWorkout, intervalCount, stageIsOpen, workoutTimeline } from '@/features/training/plan';
 import type { TimelineKind } from '@/features/training/plan';
 import { primeLocation } from '@/services/location';
 import { useSession } from '@/stores/session';
@@ -32,6 +32,8 @@ export function Workout() {
     );
   }
 
+  const stageIndex = profile.plan.stages.findIndex((stage) => stage.workouts.some((item) => item.id === workout.id));
+  const open = stageIsOpen(profile, stageIndex);
   const done = Boolean(workout.completedOn);
   const reps = intervalCount(workout);
   const blocks = timeline.filter((item) => item.kind !== 'rest').length;
@@ -119,11 +121,15 @@ export function Workout() {
         </li>
       </ol>
 
-      <div className="mission-cta">
-        <Link className="btn primary" to={`/treino/${workout.id}/guiado`} onClick={() => primeLocation()}>
-          <Play /> {done ? 'Correr de novo' : 'Começar treino'}
-        </Link>
-      </div>
+      {open ? (
+        <div className="mission-cta">
+          <Link className="btn primary" to={`/treino/${workout.id}/guiado`} onClick={() => primeLocation()}>
+            <Play /> {done ? 'Correr de novo' : 'Começar treino'}
+          </Link>
+        </div>
+      ) : (
+        <p className="muted">Dá para ver o treino. O início libera quando a etapa atual terminar.</p>
+      )}
     </main>
   );
 }

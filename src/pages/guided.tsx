@@ -15,7 +15,7 @@ import {
   tick,
   type StepResult,
 } from '@/features/training/engine';
-import { WORKOUT_POINTS, findWorkout, formatEffort, toRuntimeSteps } from '@/features/training/plan';
+import { WORKOUT_POINTS, findWorkout, formatEffort, stageIsOpen, toRuntimeSteps } from '@/features/training/plan';
 import { useLiveActivity } from '@/hooks/use-live-activity';
 import { playCue } from '@/services/audio/cues';
 import { bindScreenAwake } from '@/services/run-presence';
@@ -24,6 +24,7 @@ import type { RuntimeStep } from '@/types/domain';
 import { formatClock, formatDistanceKm, formatMeters, formatPace } from '@/utils/format';
 
 export function Guided() {
+  const { sessionId = '' } = useParams();
   const profile = useSession((state) => state.profile);
   if (!profile?.plan) {
     return (
@@ -32,6 +33,17 @@ export function Guided() {
           Início
         </Link>
         <Locked title="Treino bloqueado" message="O treino guiado abre quando houver um plano de corrida." />
+      </main>
+    );
+  }
+  const stageIndex = profile.plan.stages.findIndex((stage) => stage.workouts.some((workout) => workout.id === sessionId));
+  if (!stageIsOpen(profile, stageIndex)) {
+    return (
+      <main className="screen plain">
+        <Link className="back" to="/plano">
+          Plano
+        </Link>
+        <Locked title="Etapa bloqueada" message="Dá para ver os treinos no plano. O início libera quando a etapa atual terminar." />
       </main>
     );
   }
@@ -88,6 +100,9 @@ function GuidedRun() {
       last = now;
       const meters = Math.max(0, distanceRef.current - lastDistance.current);
       lastDistance.current = distanceRef.current;
+      // #region agent log
+      if (meters >= 50 || Math.round(delta) !== 1) fetch('http://127.0.0.1:7653/ingest/52888a3f-ebb4-4635-b41b-c8ffc74477b2',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c852c7'},body:JSON.stringify({sessionId:'c852c7',hypothesisId:'E',location:'guided.tsx:tick',message:'step clock tick',data:{delta:Math.round(delta*10)/10,meters:Math.round(meters),total:Math.round(distanceRef.current)},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       setEngine((current) => {
         if (current.status !== 'running' && current.status !== 'countdown') return current;
         return tick(current, steps, delta, current.status === 'running' ? meters : 0);
@@ -130,7 +145,7 @@ function GuidedRun() {
   if (!session || !step) {
     return (
       <main className="screen plain">
-        <button className="back" type="button" onClick={() => navigate(-1)}>
+        <button className="back" type="button" onClick={() => void live.abandon().then(() => navigate(-1))}>
           Voltar
         </button>
         <p className="muted">Não encontrei essa sessão no plano.</p>
@@ -163,7 +178,7 @@ function GuidedRun() {
   return (
     <main className="coach">
       <header className="coach-top">
-        <button className="back" type="button" onClick={() => navigate(-1)}>
+        <button className="back" type="button" onClick={() => void live.abandon().then(() => navigate(-1))}>
           <svg viewBox="0 0 24 24" aria-hidden="true" className="stroke">
             <path d="M14.5 6 8.5 12l6 6" />
           </svg>
@@ -278,7 +293,15 @@ function GuidedRun() {
           <button className="coach-pause" type="button" onClick={togglePause}>
             {paused ? 'Retomar' : 'Pausar'}
           </button>
-          <button className="coach-check" type="button" onClick={() => setEngine((current) => completeStep(current, steps))}>
+          <button className="coach-check" type="button" onClick={() => setEngine((current) => {
+            const next = completeStep(current, steps);
+            const result = next.results[next.results.length - 1];
+            const done = steps.find((item) => item.id === result?.stepId);
+            // #region agent log
+            fetch('http://127.0.0.1:7653/ingest/52888a3f-ebb4-4635-b41b-c8ffc74477b2',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c852c7'},body:JSON.stringify({sessionId:'c852c7',hypothesisId:'D',location:'guided.tsx:completeStep',message:'stage checked by button',data:{label:done?.label??null,kind:done?.kind??null,target:done?.target??null,seconds:result?.seconds??null,meters:result?.meters??null,onTarget:result?.onTarget??null},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
+            return next;
+          })}>
             <Check /> Concluir etapa
           </button>
         </div>

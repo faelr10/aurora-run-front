@@ -7,6 +7,7 @@ import { syncFirebaseActivities } from '@/services/firebase/activities';
 import { locationBlock, onLocationPermission, primeLocation, readLocationPermission, subscribeFixes, type LocationPermission } from '@/services/location';
 import { releaseLockedTracking, scheduleReleaseLockedTracking } from '@/services/run-presence';
 import {
+  deleteActivity,
   finishRecording,
   getActivity,
   getRecording,
@@ -88,6 +89,7 @@ export function useLiveActivity(input: {
   const preferencesRef = useRef(preferences);
   const clientIdRef = useRef<string | null>(null);
   const watchRef = useRef<(() => void) | null>(null);
+  const closingRef = useRef(false);
 
   const startWatch = useCallback(() => {
     if (watchRef.current || locationBlock()) return;
@@ -125,6 +127,14 @@ export function useLiveActivity(input: {
       if (cancelled) return;
       announcedKm.current = activity?.splits.length ?? 0;
       setState((current) => ({ ...current, activity, now: Date.now() }));
+      if (activity?.status === 'paused') {
+        await resumeRecording(activity.clientId, new Date().toISOString());
+        const resumed = await getActivity(activity.clientId);
+        if (cancelled) return;
+        setState((current) => ({ ...current, activity: resumed, now: Date.now() }));
+        startWatch();
+        return;
+      }
       if (activity?.status === 'recording') startWatch();
     }
     void start();
@@ -149,6 +159,12 @@ export function useLiveActivity(input: {
       haltWatch();
       stopPermission();
       scheduleReleaseLockedTracking();
+      // #region agent log
+      const clientId = clientIdRef.current;
+      if (clientId) void getActivity(clientId).then((left) => {
+        fetch('http://127.0.0.1:7653/ingest/52888a3f-ebb4-4635-b41b-c8ffc74477b2',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c852c7'},body:JSON.stringify({sessionId:'c852c7',runId:'post-fix',hypothesisId:'A',location:'use-live-activity.ts:cleanup',message:'run screen unmounted',data:{clientId,closing:closingRef.current,status:left?.status??null,distance:left?.distanceMeters??null,anchor:left?.movingAnchorAt??null},timestamp:Date.now()})}).catch(()=>{});
+      });
+      // #endregion
     };
   }, [email, enabled, haltWatch, input.sessionId, input.source, input.title, startWatch]);
 
@@ -172,7 +188,16 @@ export function useLiveActivity(input: {
     setState((current) => ({ ...current, activity: next }));
   }, [startWatch, state.activity]);
 
+  const abandon = useCallback(async () => {
+    closingRef.current = true;
+    const activity = state.activity ?? (clientIdRef.current ? await getActivity(clientIdRef.current) : null);
+    releaseLockedTracking();
+    haltWatch();
+    if (activity && activity.status !== 'completed') await deleteActivity(activity.clientId);
+  }, [haltWatch, state.activity]);
+
   const finish = useCallback(async (): Promise<Activity | null> => {
+    closingRef.current = true;
     const activity = state.activity ?? (clientIdRef.current ? await getActivity(clientIdRef.current) : null);
     if (!activity) return null;
     releaseLockedTracking();
@@ -200,5 +225,6 @@ export function useLiveActivity(input: {
     pause,
     resume,
     finish,
+    abandon,
   };
 }

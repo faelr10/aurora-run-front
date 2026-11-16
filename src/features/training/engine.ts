@@ -99,7 +99,7 @@ export function stepProgress(step: RuntimeStep | undefined, snapshot: EngineSnap
 export function judgeStep(step: RuntimeStep, seconds: number, meters: number): boolean | null {
   if (step.kind !== 'work') return null;
   if (step.target.type === 'time') return seconds >= step.target.seconds - 1;
-  if (meters < step.target.meters * 0.97) return null;
+  if (meters < step.target.meters * 0.97) return false;
   if (!step.goalSeconds) return true;
   return seconds <= step.goalSeconds + Math.max(2, step.goalSeconds * 0.02);
 }

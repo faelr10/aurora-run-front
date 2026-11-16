@@ -20,6 +20,12 @@ export function currentStageIndex(profile: RunnerProfile): number {
   return index === -1 ? Math.max(0, profile.plan.stages.length - 1) : index;
 }
 
+export function stageIsOpen(profile: RunnerProfile, stageIndex: number): boolean {
+  if (stageIndex < 0) return false;
+  const finished = profile.plan.stages.every((stage) => stage.workouts.every((workout) => workout.completedOn));
+  return finished || stageIndex <= currentStageIndex(profile);
+}
+
 export const WORKOUT_POINTS: Record<PlanWorkoutKind, number> = { easy: 50, intervals: 50, long: 80 };
 
 export type TimelineKind = 'warmup' | 'work' | 'rest' | 'steady' | 'cooldown';
