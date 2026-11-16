@@ -1200,52 +1200,63 @@ h2 { font-size: 22px; letter-spacing: -0.4px; }
 .plan-flow p { margin-top: 2px; line-height: 1.35; }
 
 @media (max-width: 420px) {
-  .app { font-size: 15px; }
-  h1 { font-size: 28px; }
-  h2 { font-size: 19px; }
+  .app { font-size: 14px; }
+  h1 { font-size: 25px; }
+  h2 { font-size: 18px; }
   .auth-screen h1 { font-size: 32px; }
   .screen { padding-left: 16px; padding-right: 16px; }
   .plan-detail { padding-left: 16px; padding-right: 16px; }
   .plan-detail h1 { font-size: 28px; }
   .mission-hero { padding: 14px; border-radius: 22px; }
-  .mission-hero h1 { font-size: 24px; }
-  .mission-hero > p { font-size: 13px; }
-  .mission-stats strong { font-size: 16px; }
-  .mission-head h2 { font-size: 17px; }
-  .mission-line strong { font-size: 20px; }
+  .mission-hero h1 { font-size: 21px; }
+  .mission-hero h1 svg { width: 18px; height: 18px; }
+  .mission-hero > p { font-size: 12px; }
+  .mission-stats strong { font-size: 15px; }
+  .mission-head h2 { font-size: 16px; }
+  .mission-line strong { font-size: 17px; }
   .mission-line b { font-size: 12px; }
   .mission article p, .mission-rest p { font-size: 12px; }
   .resume-card h2 { font-size: 24px; }
   .week-metrics strong { font-size: 24px; }
   .summary-title h1 { font-size: 24px; }
   .building h1 { font-size: 30px; }
-  .btn { font-size: 14px; letter-spacing: 0.04em; min-height: 48px; }
+  .btn { font-size: 13px; letter-spacing: 0.04em; min-height: 46px; }
+  .tab, .run-tab { font-size: 9px; }
+  .tab svg { width: 20px; height: 20px; }
+  .tabbar { height: 64px; }
+  .run-tab { width: 52px; height: 52px; min-height: 52px; }
   .plan-screen { gap: 8px; padding-top: 12px; }
   .journey-top { gap: 8px; }
-  .journey-top h1 { font-size: 26px; letter-spacing: -0.6px; }
+  .journey-top h1 { font-size: 23px; letter-spacing: -0.5px; }
   .journey-badges { gap: 6px; padding-top: 2px; }
-  .journey-days, .journey-level { font-size: 12px; }
+  .journey-days, .journey-level { font-size: 11px; }
   .journey-level { padding: 4px 8px; }
-  .journey-stages { gap: 6px; }
+  .journey-stages { gap: 6px; margin: 0 -16px; padding: 0 16px; scroll-padding: 0 16px; }
   .journey-stages button {
-    flex: 1 1 0;
+    flex: none;
     justify-content: center;
-    min-width: 0;
-    min-height: 32px;
-    padding: 0 8px;
+    min-height: 30px;
+    padding: 0 11px;
     font-size: 12px;
   }
-  .journey-head h2 { font-size: 20px; }
-  .journey-medal { gap: 6px 8px; }
-  .journey-medal p { font-size: 12px; line-height: 1.3; }
+  .journey-stages button svg { width: 12px; height: 12px; }
+  .journey-head h2 { font-size: 18px; }
+  .journey-medal { gap: 6px 8px; margin-top: 6px; }
+  .journey-medal p { font-size: 11px; line-height: 1.3; }
   .journey li { gap: 8px; }
-  .journey article { padding: 10px 12px; border-radius: 18px; }
-  .journey header em { font-size: 10px; letter-spacing: 0.3px; }
-  .journey header b, .journey li.wait header { font-size: 11px; }
-  .journey h3 { font-size: 17px; }
-  .journey li.next h3 { font-size: 18px; }
-  .journey article > p { font-size: 12px; }
-  .journey-go a { min-height: 40px; padding: 0 12px; font-size: 14px; }
-  .journey-go button { width: 40px; height: 40px; }
-  .journey-redo { min-height: 42px; font-size: 14px; }
+  .journey article { padding: 9px 12px 10px; border-radius: 16px; }
+  .journey header { min-height: 16px; }
+  .journey header em { font-size: 9px; letter-spacing: 0.3px; }
+  .journey li.next header em { padding: 3px 7px; }
+  .journey header b, .journey li.wait header { font-size: 10px; }
+  .journey h3 { font-size: 15px; }
+  .journey li.next h3 { font-size: 16px; }
+  .journey h3 svg { width: 14px; height: 14px; }
+  .journey article > p { font-size: 11px; }
+  .journey .meta { font-size: 12px; margin-top: 2px; }
+  .journey .meta button { font-size: 12px; }
+  .journey-go { margin-top: 6px; }
+  .journey-go a { min-height: 36px; padding: 0 12px; font-size: 13px; }
+  .journey-go button { width: 36px; height: 36px; }
+  .journey-redo { min-height: 40px; font-size: 13px; }
 }

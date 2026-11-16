@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { Locked } from '@/components/locked';
@@ -18,6 +18,14 @@ export function Plan() {
   const finished = stages.length > 0 && stages.every((stage) => stage.workouts.every((workout) => workout.completedOn));
   const [selected, setSelected] = useState(active);
   const stage = stages[Math.min(selected, Math.max(0, stages.length - 1))];
+  const stagesRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const row = stagesRef.current;
+    const button = row?.querySelector<HTMLButtonElement>('button.on');
+    if (!row || !button) return;
+    row.scrollTo({ left: button.offsetLeft - (row.clientWidth - button.offsetWidth) / 2, behavior: 'smooth' });
+  }, [selected, stages.length]);
 
   async function mark(workout: PlanWorkout) {
     setError(null);
@@ -65,7 +73,7 @@ export function Plan() {
         </div>
       </header>
 
-      <div className="journey-stages">
+      <div className="journey-stages" ref={stagesRef}>
         {stages.map((item, index) => {
           const locked = !finished && index > active;
           const done = item.workouts.every((workout) => workout.completedOn);
