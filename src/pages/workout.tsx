@@ -2,115 +2,185 @@ import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { Locked } from '@/components/locked';
-import { buildPlan, expandSteps } from '@/features/training/plan';
+import { WORKOUT_LABEL, WORKOUT_POINTS, findWorkout, intervalCount, workoutTimeline } from '@/features/training/plan';
+import type { TimelineKind } from '@/features/training/plan';
 import { primeLocation } from '@/services/location';
 import { useSession } from '@/stores/session';
-import type { RuntimeStep, WorkoutType } from '@/types/domain';
-import { formatClock, formatDayMonth, formatDistanceKm, formatMeters, formatPace } from '@/utils/format';
-
-const TYPE_LABEL: Record<WorkoutType, string> = {
-  easy: 'RODAGEM',
-  intervals: 'QUALIDADE',
-  progressive: 'PROGRESSIVO',
-  long: 'LONGA',
-  recovery: 'RECUPERAÇÃO',
-  rest: 'DESCANSO',
-};
+import { formatDayMonth, formatDistanceKm } from '@/utils/format';
 
 export function Workout() {
   const { sessionId = '' } = useParams();
   const profile = useSession((state) => state.profile);
-  const session = useMemo(() => (profile ? buildPlan(profile).find((item) => item.id === sessionId) ?? null : null), [profile, sessionId]);
-  const steps = session ? expandSteps(session.steps) : [];
+  const workout = useMemo(() => (profile?.plan ? findWorkout(profile, sessionId) : null), [profile, sessionId]);
+  const timeline = useMemo(() => (workout ? workoutTimeline(workout) : []), [workout]);
 
-  if (!profile) {
+  if (!profile?.plan) {
     return (
-      <main className="screen plain">
-        <Link className="back" to="/plano">
-          Treinos
-        </Link>
+      <main className="plan-detail">
+        <BackToPlan />
         <Locked title="Treino bloqueado" message="O detalhe do treino abre quando houver um plano de corrida." />
       </main>
     );
   }
 
-  if (!session) {
+  if (!workout) {
     return (
-      <main className="screen plain">
-        <Link className="back" to="/plano">
-          Treinos
-        </Link>
+      <main className="plan-detail">
+        <BackToPlan />
         <p className="muted">Esse treino não está no plano atual.</p>
       </main>
     );
   }
 
-  const pace = steps.find((step) => step.targetPaceSecondsPerKm)?.targetPaceSecondsPerKm ?? null;
-  const estimatedSeconds = steps.reduce((total, step) => {
-    if (step.target.type === 'time') return total + step.target.seconds;
-    if (!step.targetPaceSecondsPerKm) return total;
-    return total + Math.round((step.target.meters / 1000) * step.targetPaceSecondsPerKm);
-  }, 0);
+  const done = Boolean(workout.completedOn);
+  const reps = intervalCount(workout);
+  const blocks = timeline.filter((item) => item.kind !== 'rest').length;
 
   return (
-    <main className="screen plain">
-      <Link className="back" to="/plano">
-        Treinos
-      </Link>
-      <div>
-        <p className="eyebrow">
-          {TYPE_LABEL[session.type]} · {formatDayMonth(session.date).toUpperCase()}
-        </p>
-        <h1>{session.title}</h1>
-        <p className="muted">{session.objective}</p>
+    <main className="plan-detail mission-screen">
+      <header className="mission-top">
+        <BackToPlan />
+        <span className="journey-level">+{WORKOUT_POINTS[workout.kind]} XP</span>
+      </header>
+
+      <section className={done ? 'mission-hero done' : 'mission-hero'}>
+        <header>
+          <em>{WORKOUT_LABEL[workout.kind]}</em>
+          {done ? (
+            <b>
+              <Check /> Feito em {formatDayMonth(workout.completedOn!)}
+            </b>
+          ) : null}
+        </header>
+        <h1>
+          {done ? null : <Bolt />}
+          {workout.title}
+        </h1>
+        <p>{workout.objective}</p>
+        <div className="mission-stats">
+          <span>
+            <strong>{workout.distanceMeters ? formatDistanceKm(workout.distanceMeters, 1) : '—'}</strong> km
+          </span>
+          <span>
+            <strong>{workout.durationMinutes}</strong> min
+          </span>
+          {reps > 0 ? (
+            <span>
+              <strong>{reps}</strong> {reps === 1 ? 'tiro' : 'tiros'}
+            </span>
+          ) : null}
+        </div>
+      </section>
+
+      <div className="mission-head">
+        <h2>Passo a passo</h2>
+        <span>{blocks} blocos</span>
       </div>
-      <section className="metrics dark">
-        <Brief value={session.distanceMeters ? formatDistanceKm(session.distanceMeters, 1) : '—'} unit="KM" label="DISTÂNCIA" />
-        <Brief value={pace ? formatPace(pace) : '—'} unit="/KM" label="RITMO ALVO" />
-        <Brief value={estimatedSeconds ? formatClock(estimatedSeconds).replace(/^00:/, '') : '—'} label="TEMPO" />
-      </section>
-      <p className="section-label">ETAPAS</p>
-      <ol className="steps">
-        {steps.map((step, index) => (
-          <li key={step.id}>
-            <span>{String(index + 1).padStart(2, '0')}</span>
-            <div>
-              <strong>{step.label}</strong>
-              <p className="muted">{step.detail}</p>
-              <p className="step-meta">
-                {step.target.type === 'distance' ? formatMeters(step.target.meters) : `${Math.round(step.target.seconds / 60)} min`}
-                {targetTime(step) ? ` · ALVO ${targetTime(step)}` : ''}
-              </p>
-            </div>
-          </li>
-        ))}
+
+      <ol className="mission">
+        {timeline.map((item) =>
+          item.kind === 'rest' ? (
+            <li key={item.id} className="rest">
+              <span className="node" aria-hidden="true" />
+              <div className="mission-rest">
+                <p>
+                  <Pause />
+                  <b>{item.tag}</b>
+                  <span>
+                    {item.headline} · {item.target}
+                  </span>
+                </p>
+                {item.detail ? <small>{item.detail}</small> : null}
+              </div>
+            </li>
+          ) : (
+            <li key={item.id} className={item.kind}>
+              <span className="node" aria-hidden="true">
+                <NodeIcon kind={item.kind} />
+              </span>
+              <article>
+                <em>{item.tag}</em>
+                <div className="mission-line">
+                  <strong>{item.headline}</strong>
+                  {item.target ? <b>{item.target}</b> : null}
+                </div>
+                {item.detail ? <p>{item.detail}</p> : null}
+              </article>
+            </li>
+          ),
+        )}
+        <li className="finish">
+          <span className="node" aria-hidden="true">
+            <Trophy />
+          </span>
+          <p>
+            Treino completo <b>+{WORKOUT_POINTS[workout.kind]} XP</b>
+          </p>
+        </li>
       </ol>
-      <section className="cue">
-        <p className="eyebrow">COMO EXECUTAR</p>
-        <p>{steps[0]?.cue ?? session.objective}</p>
-      </section>
-      <Link className="btn primary" to={`/treino/${session.id}/guiado`} onClick={() => primeLocation()}>
-        Começar treino
-      </Link>
+
+      <div className="mission-cta">
+        <Link className="btn primary" to={`/treino/${workout.id}/guiado`} onClick={() => primeLocation()}>
+          <Play /> {done ? 'Correr de novo' : 'Começar treino'}
+        </Link>
+      </div>
     </main>
   );
 }
 
-function Brief({ value, unit, label }: { value: string; unit?: string; label: string }) {
+function NodeIcon({ kind }: { kind: TimelineKind }) {
+  if (kind === 'work') return <Bolt />;
+  if (kind === 'steady') return <Play />;
+  return null;
+}
+
+function BackToPlan() {
   return (
-    <div>
-      <p className="metric-value light">
-        {value}
-        {unit ? <small>{unit}</small> : null}
-      </p>
-      <p className="metric-label light">{label}</p>
-    </div>
+    <Link className="back" to="/plano">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M14.5 6 8.5 12l6 6" />
+      </svg>
+      Voltar
+    </Link>
   );
 }
 
-function targetTime(step: RuntimeStep): string | null {
-  if (step.target.type !== 'distance' || !step.targetPaceSecondsPerKm) return null;
-  const seconds = Math.round((step.target.meters / 1000) * step.targetPaceSecondsPerKm);
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes}:${String(seconds % 60).padStart(2, '0')}`;
+function Check() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="stroke">
+      <path d="M5 12.5 9.2 17 19 7" />
+    </svg>
+  );
+}
+
+function Bolt() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="fill">
+      <path d="M13 2 4 14h7l-1 8 9-12h-7z" />
+    </svg>
+  );
+}
+
+function Play() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="fill">
+      <path d="M8 6.5v11l10-5.5z" />
+    </svg>
+  );
+}
+
+function Pause() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="stroke">
+      <path d="M9 7v10M15 7v10" />
+    </svg>
+  );
+}
+
+function Trophy() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="stroke">
+      <path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5.5A2.5 2.5 0 0 0 8 10M16 6h2.5A2.5 2.5 0 0 1 16 10M12 13v3M9 20h6M10 17h4" />
+    </svg>
+  );
 }

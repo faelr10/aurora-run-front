@@ -1,12 +1,11 @@
 import { z } from 'zod';
 
 export const onboardingSchema = z.object({
+  age: z.number().int().min(12).max(90),
+  weightKg: z.number().min(30).max(250),
   currentDistanceMeters: z.number().positive(),
-  fiveKmTimeSeconds: z.number().positive(),
-  weeklyFrequency: z.number().int().min(2).max(6),
+  currentDurationSeconds: z.number().positive(),
   goalDistanceMeters: z.number().positive(),
-  goalTimeSeconds: z.number().positive(),
-  goalHorizonWeeks: z.number().int().min(4).max(24),
   level: z.enum(['beginner', 'intermediate', 'advanced']),
 });
 

@@ -7,7 +7,6 @@ import {
   apiErrorMessage,
   bindTokenPersistence,
   fetchMe,
-  generatePlan,
   loginAccount,
   registerAccount,
   savePreferences,
@@ -15,6 +14,18 @@ import {
   setAuthTokens,
 } from '@/services/api/client';
 import { syncActivities } from '@/services/api/sync';
+import { syncFirebaseActivities } from '@/services/firebase/activities';
+import {
+  loginFirebaseUser,
+  readCloudUser,
+  registerFirebaseUser,
+  saveCloudPreferences,
+  saveCloudProfile,
+  signOutFirebase,
+  waitForFirebaseUser,
+} from '@/services/firebase/account';
+import { firebaseConfigured } from '@/services/firebase/app';
+import { requestDevelopmentPlan } from '@/services/openai/plan';
 import { deleteDemoActivities, findAccount, getDatabase, insertAccount, updateAccount } from '@/services/storage/database';
 import { defaultPreferences, type Preferences, type RunnerProfile } from '@/types/domain';
 import { toDateKey } from '@/utils/format';
@@ -32,7 +43,7 @@ type PersistedSession = {
 
 type SessionState = {
   ready: boolean;
-  mode: 'local' | 'remote' | null;
+  mode: 'local' | 'remote' | 'firebase' | null;
   email: string | null;
   name: string | null;
   profile: RunnerProfile | null;
@@ -42,6 +53,7 @@ type SessionState = {
   register: (input: { name: string; email: string; password: string }) => Promise<void>;
   login: (input: { email: string; password: string }) => Promise<void>;
   completeOnboarding: (values: OnboardingValues) => Promise<void>;
+  completeWorkout: (workoutId: string) => Promise<void>;
   updatePreferences: (preferences: Preferences) => Promise<void>;
   loadDemo: () => Promise<void>;
   clearDemo: () => Promise<void>;
@@ -70,6 +82,23 @@ export const useSession = create<SessionState>((set, get) => ({
         if (!current.email || current.mode !== 'remote') return;
         persistSession({ mode: 'remote', email: current.email, accessToken, refreshToken });
       });
+      if (firebaseConfigured()) {
+        const user = await waitForFirebaseUser();
+        if (user) {
+          const cloud = await readCloudUser(user);
+          set({
+            ready: true,
+            mode: 'firebase',
+            email: cloud.email,
+            name: cloud.name,
+            profile: cloud.profile,
+            preferences: cloud.preferences,
+            demo: false,
+          });
+          void syncFirebaseActivities(cloud.email).catch(() => undefined);
+          return;
+        }
+      }
       const raw = localStorage.getItem(SESSION_KEY);
       if (!raw) {
         set({ ready: true, ...guestState() });
@@ -115,6 +144,13 @@ export const useSession = create<SessionState>((set, get) => ({
 
   register: async (input) => {
     const email = input.email.trim().toLowerCase();
+    const name = input.name.trim();
+    if (firebaseConfigured()) {
+      const cloud = await registerFirebaseUser({ ...input, email, name });
+      set({ mode: 'firebase', email: cloud.email, name: cloud.name, profile: null, preferences: cloud.preferences, demo: false });
+      void syncFirebaseActivities(cloud.email).catch(() => undefined);
+      return;
+    }
     if (apiEnabled()) {
       try {
         const auth = await registerAccount({ ...input, email });
@@ -129,7 +165,7 @@ export const useSession = create<SessionState>((set, get) => ({
     const salt = createSalt();
     await insertAccount({
       email,
-      name: input.name.trim(),
+      name,
       salt,
       passwordHash: await hashPassword(input.password, salt),
       profile: null,
@@ -138,11 +174,24 @@ export const useSession = create<SessionState>((set, get) => ({
       nameBackup: null,
     });
     persistSession({ mode: 'local', email, accessToken: null, refreshToken: null });
-    set({ mode: 'local', email, name: input.name.trim(), profile: null, preferences: defaultPreferences, demo: false });
+    set({ mode: 'local', email, name, profile: null, preferences: defaultPreferences, demo: false });
   },
 
   login: async (input) => {
     const email = input.email.trim().toLowerCase();
+    if (firebaseConfigured()) {
+      const cloud = await loginFirebaseUser({ email, password: input.password });
+      set({
+        mode: 'firebase',
+        email: cloud.email,
+        name: cloud.name,
+        profile: cloud.profile,
+        preferences: cloud.preferences,
+        demo: false,
+      });
+      void syncFirebaseActivities(cloud.email).catch(() => undefined);
+      return;
+    }
     if (apiEnabled()) {
       try {
         const auth = await loginAccount({ email, password: input.password });
@@ -168,28 +217,44 @@ export const useSession = create<SessionState>((set, get) => ({
   },
 
   completeOnboarding: async (values) => {
-    const profile: RunnerProfile = { ...values, planStartedAt: toDateKey(new Date()) };
     const current = get();
     if (!current.email) throw new Error('Crie uma conta para guardar o plano.');
-    if (current.mode === 'remote') {
-      const me = await saveProfile(profile, current.name ?? undefined);
-      try {
-        await generatePlan();
-      } catch {
-        // O plano local continua disponível sem rede.
-      }
-      set({ profile: me.profile ?? profile, name: me.user.name, demo: false });
+    const plan = await requestDevelopmentPlan(values);
+    const profile: RunnerProfile = { ...values, plan, planStartedAt: toDateKey(new Date()) };
+    await persistProfile(profile, set, get);
+  },
+
+  completeWorkout: async (workoutId) => {
+    const current = get();
+    const profile = current.profile;
+    if (!profile) return;
+    const today = toDateKey(new Date());
+    const next: RunnerProfile = {
+      ...profile,
+      plan: {
+        ...profile.plan,
+        stages: profile.plan.stages.map((stage) => ({
+          ...stage,
+          workouts: stage.workouts.map((workout) => (workout.id === workoutId && !workout.completedOn ? { ...workout, completedOn: today } : workout)),
+        })),
+      },
+    };
+    if (current.demo) {
+      set({ profile: next });
       return;
     }
-    const account = await findAccount(current.email);
-    if (!account) throw new Error('Conta local não encontrada.');
-    await updateAccount({ ...account, profile, profileBackup: null, nameBackup: null });
-    set({ profile, demo: false });
+    await persistProfile(next, set, get);
   },
 
   updatePreferences: async (preferences) => {
     const current = get();
     set({ preferences });
+    if (current.mode === 'firebase') {
+      const user = await waitForFirebaseUser();
+      if (!user) return;
+      await saveCloudPreferences(user.uid, preferences);
+      return;
+    }
     if (current.mode === 'remote') {
       const saved = await savePreferences(preferences);
       set({ preferences: saved });
@@ -253,19 +318,50 @@ export const useSession = create<SessionState>((set, get) => ({
 
   resetOnboarding: async () => {
     const current = get();
-    if (current.email && current.mode === 'local') {
-      const account = await findAccount(current.email);
-      if (account) await updateAccount({ ...account, profile: null });
+    if (current.email && (current.mode === 'local' || current.mode === 'firebase')) {
+      if (current.mode === 'firebase') {
+        const user = await waitForFirebaseUser();
+        if (user) await saveCloudProfile(user.uid, null);
+      } else {
+        const account = await findAccount(current.email);
+        if (account) await updateAccount({ ...account, profile: null });
+      }
     }
     set({ profile: null, demo: false });
   },
 
   signOut: async () => {
+    await signOutFirebase();
     setAuthTokens(null, null);
     localStorage.removeItem(SESSION_KEY);
     set({ ready: true, ...guestState() });
   },
 }));
+
+async function persistProfile(
+  profile: RunnerProfile,
+  set: (partial: Partial<SessionState>) => void,
+  get: () => SessionState,
+): Promise<void> {
+  const current = get();
+  if (!current.email) throw new Error('Crie uma conta para guardar o plano.');
+  if (current.mode === 'firebase') {
+    const user = await waitForFirebaseUser();
+    if (!user) throw new Error('Entre de novo para guardar o plano.');
+    await saveCloudProfile(user.uid, profile, current.name ?? undefined);
+    set({ profile, demo: false });
+    return;
+  }
+  if (current.mode === 'remote') {
+    const me = await saveProfile(profile, current.name ?? undefined);
+    set({ profile: me.profile ?? profile, name: me.user.name, demo: false });
+    return;
+  }
+  const account = await findAccount(current.email);
+  if (!account) throw new Error('Conta local não encontrada.');
+  await updateAccount({ ...account, profile, profileBackup: null, nameBackup: null });
+  set({ profile, demo: false });
+}
 
 async function adoptRemote(
   accessToken: string,

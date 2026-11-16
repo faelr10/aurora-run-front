@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { announceKilometer } from '@/services/audio/cues';
 import { syncActivities } from '@/services/api/sync';
+import { syncFirebaseActivities } from '@/services/firebase/activities';
 import { locationBlock, onLocationPermission, primeLocation, readLocationPermission, subscribeFixes, type LocationPermission } from '@/services/location';
 import { releaseLockedTracking, scheduleReleaseLockedTracking } from '@/services/run-presence';
 import {
@@ -65,11 +66,18 @@ function rememberFix(position: GeolocationPosition): void {
   ]);
 }
 
-export function useLiveActivity(input: { source: ActivitySource; title: string; sessionId?: string | null; enabled?: boolean }) {
+export function useLiveActivity(input: {
+  source: ActivitySource;
+  title: string;
+  sessionId?: string | null;
+  enabled?: boolean;
+  announceKilometers?: boolean;
+}) {
   const email = useSession((state) => state.email);
   const preferences = useSession((state) => state.preferences);
   const mode = useSession((state) => state.mode);
   const enabled = input.enabled !== false;
+  const announceRef = useRef(input.announceKilometers !== false);
   const queryClient = useQueryClient();
   const [state, setState] = useState<LiveState>({
     activity: null,
@@ -130,7 +138,7 @@ export function useLiveActivity(input: { source: ActivitySource; title: string; 
         if (!full || cancelled) return;
         if (full.splits.length > announcedKm.current) {
           announcedKm.current = full.splits.length;
-          announceKilometer(full.splits.length, preferencesRef.current.audioEnabled, preferencesRef.current.vibrationEnabled);
+          if (announceRef.current) announceKilometer(full.splits.length, preferencesRef.current.audioEnabled, preferencesRef.current.vibrationEnabled);
         }
         setState((current) => ({ ...current, activity: full, now: Date.now() }));
       });
@@ -175,6 +183,7 @@ export function useLiveActivity(input: { source: ActivitySource; title: string; 
     await queryClient.invalidateQueries({ queryKey: ['activities'] });
     await queryClient.invalidateQueries({ queryKey: ['recording'] });
     if (email && mode === 'remote') void syncActivities(email).catch(() => undefined);
+    if (email && mode === 'firebase') void syncFirebaseActivities(email).catch(() => undefined);
     return next;
   }, [email, haltWatch, mode, queryClient, state.activity]);
 

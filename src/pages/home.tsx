@@ -10,6 +10,10 @@ const WEEK_LETTERS = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
 
 export function Home() {
   const name = useSession((state) => state.name);
+  const mode = useSession((state) => state.mode);
+  const profile = useSession((state) => state.profile);
+  const hasAccount = mode === 'local' || mode === 'remote' || mode === 'firebase';
+  const planPath = !hasAccount ? '/criar-conta' : profile?.plan?.stages?.length ? '/plano' : '/avaliacao';
   const activities = useActivities();
   const recording = useRecording();
   const navigate = useNavigate();
@@ -88,7 +92,7 @@ export function Home() {
       )}
 
       <div className="shortcuts">
-        <Link className="shortcut" to="/plano">
+        <Link className="shortcut" to={planPath}>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <rect x="4" y="5" width="16" height="15" rx="2" />
             <path d="M8 3.5v3M16 3.5v3M4 10h16" />

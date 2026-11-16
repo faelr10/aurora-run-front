@@ -3,7 +3,9 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { Shell } from '@/components/shell';
 import { ActivityDetail, ActivityDone, Notifications } from '@/pages/activity';
+import { Login, Register } from '@/pages/auth';
 import { FreeRun } from '@/pages/free';
+import { Onboarding } from '@/pages/onboarding';
 import { Guided } from '@/pages/guided';
 import { Home } from '@/pages/home';
 import { Plan } from '@/pages/plan';
@@ -40,6 +42,9 @@ export default function App() {
           <Route path="/atividade/:activityId" element={<ActivityDetail />} />
           <Route path="/atividade/:activityId/concluida" element={<ActivityDone />} />
         </Route>
+        <Route path="/entrar" element={<Login />} />
+        <Route path="/criar-conta" element={<Register />} />
+        <Route path="/avaliacao" element={<Onboarding />} />
         <Route path="/corrida" element={<FreeRun />} />
         <Route path="/treino/:sessionId" element={<Workout />} />
         <Route path="/treino/:sessionId/guiado" element={<Guided />} />

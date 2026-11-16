@@ -1,11 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { Locked } from '@/components/locked';
 import { useSession } from '@/stores/session';
 import type { Level } from '@/types/domain';
-import { formatDistanceKm } from '@/utils/format';
+import { formatDistanceKm, formatDuration } from '@/utils/format';
 
 const levels: Record<Level, string> = {
   beginner: 'Iniciante',
@@ -28,7 +28,7 @@ export function Profile() {
   const queryClient = useQueryClient();
   const [message, setMessage] = useState<string | null>(null);
 
-  const hasAccount = mode === 'local' || mode === 'remote';
+  const hasAccount = mode === 'local' || mode === 'remote' || mode === 'firebase';
 
   return (
     <main className="screen">
@@ -38,19 +38,28 @@ export function Profile() {
             <h1>{name ?? 'Perfil'}</h1>
             <p className="muted">{email}</p>
           </div>
-          {profile ? (
+          {profile?.plan && typeof profile.age === 'number' ? (
             <section className="group">
               <Row label="Nível" value={levels[profile.level]} />
-              <Row label="Distância atual" value={`${formatDistanceKm(profile.currentDistanceMeters, 0)} km`} />
-              <Row label="Objetivo" value={`${formatDistanceKm(profile.goalDistanceMeters, 0)} km`} />
-              <Row label="Frequência" value={`${profile.weeklyFrequency}x por semana`} />
+              <Row label="Idade" value={`${profile.age} anos`} />
+              <Row label="Peso" value={`${profile.weightKg} kg`} />
+              <Row label="Distância atual" value={`${formatDistanceKm(profile.currentDistanceMeters, 1)} km em ${formatDuration(profile.currentDurationSeconds)}`} />
+              <Row label="Meta" value={`${formatDistanceKm(profile.goalDistanceMeters, 1)} km`} />
             </section>
           ) : (
             <Locked title="Plano bloqueado" message="Os dados do plano aparecem quando houver um treino vinculado à conta." />
           )}
         </>
       ) : (
-        <Locked title="Conta bloqueada" message="O perfil pede uma conta. A corrida fica salva neste aparelho, sem cadastro." />
+        <>
+          <Locked title="Conta bloqueada" message="Crie uma conta para o perfil e as corridas acompanharem você em outros aparelhos." />
+          <Link className="btn primary" to="/criar-conta">
+            Criar conta
+          </Link>
+          <Link className="btn text" to="/entrar">
+            Já tenho conta
+          </Link>
+        </>
       )}
       <h2>Áudio</h2>
       <section className="group">

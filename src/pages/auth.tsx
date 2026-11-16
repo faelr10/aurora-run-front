@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { loginSchema, registerSchema } from '@/features/onboarding/schema';
+import { firebaseConfigured } from '@/services/firebase/app';
 import { useSession } from '@/stores/session';
 
 export function Welcome() {
@@ -51,10 +52,14 @@ export function Login() {
 
   return (
     <main className="screen auth-screen">
-      <Link className="back" to="/">
+      <Link className="back" to="/perfil">
         Voltar
       </Link>
-      <h1>Entrar</h1>
+      <header className="auth-intro">
+        <p className="eyebrow">Conta</p>
+        <h1>Entrar</h1>
+        <p className="muted">Use o e-mail da sua conta para recuperar perfil e corridas.</p>
+      </header>
       <form className="form" onSubmit={(event) => void submit(event)}>
         <label>
           E-mail
@@ -68,6 +73,9 @@ export function Login() {
         <button className="btn primary" type="submit" disabled={pending}>
           {pending ? 'Entrando' : 'Entrar'}
         </button>
+        <Link className="btn text" to="/criar-conta">
+          Criar conta
+        </Link>
       </form>
     </main>
   );
@@ -93,7 +101,7 @@ export function Register() {
     setError(null);
     try {
       await register(parsed.data);
-      navigate('/avaliacao');
+      navigate('/inicio');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Não foi possível criar a conta.');
     } finally {
@@ -103,28 +111,38 @@ export function Register() {
 
   return (
     <main className="screen auth-screen">
-      <Link className="back" to="/">
+      <Link className="back" to="/perfil">
         Voltar
       </Link>
-      <h1>Criar conta</h1>
-      <p className="muted">Sem servidor configurado, a conta fica só neste navegador.</p>
+      <header className="auth-intro">
+        <p className="eyebrow">Conta</p>
+        <h1>Criar conta</h1>
+        <p className="muted">
+          {firebaseConfigured()
+            ? 'O perfil e as corridas acompanham você em outros aparelhos.'
+            : 'Sem o Firebase configurado, a conta fica só neste navegador.'}
+        </p>
+      </header>
       <form className="form" onSubmit={(event) => void submit(event)}>
         <label>
           Nome
-          <input autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} />
+          <input autoComplete="name" placeholder="Seu nome" value={name} onChange={(event) => setName(event.target.value)} />
         </label>
         <label>
           E-mail
-          <input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+          <input type="email" autoComplete="email" placeholder="voce@email.com" value={email} onChange={(event) => setEmail(event.target.value)} />
         </label>
         <label>
           Senha
-          <input type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} />
+          <input type="password" autoComplete="new-password" placeholder="Mínimo de 8 caracteres" value={password} onChange={(event) => setPassword(event.target.value)} />
         </label>
         {error ? <p className="error">{error}</p> : null}
         <button className="btn primary" type="submit" disabled={pending}>
           {pending ? 'Criando' : 'Criar conta'}
         </button>
+        <Link className="btn text" to="/entrar">
+          Já tenho conta
+        </Link>
       </form>
     </main>
   );

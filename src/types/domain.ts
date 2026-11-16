@@ -21,6 +21,8 @@ export type PlanStep = {
 export type RuntimeStep = PlanStep & {
   repeatIndex?: number;
   repeatCount?: number;
+  goalSeconds?: number;
+  manner?: string;
 };
 
 export type PlanSession = {
@@ -34,15 +36,52 @@ export type PlanSession = {
   steps: PlanStep[];
 };
 
+export type PlanWorkoutKind = 'easy' | 'intervals' | 'long';
+
+export type PlanWorkoutStep = {
+  label: string;
+  detail: string;
+  minutes: number;
+  repeats?: number;
+  recoveryMinutes?: number;
+  recoverySeconds?: number;
+  recoveryDetail?: string;
+  meters?: number;
+  targetSeconds?: number;
+};
+
+export type PlanWorkout = {
+  id: string;
+  kind: PlanWorkoutKind;
+  title: string;
+  objective: string;
+  distanceMeters: number | null;
+  durationMinutes: number;
+  steps: PlanWorkoutStep[];
+  completedOn: string | null;
+};
+
+export type PlanStage = {
+  id: string;
+  title: string;
+  focus: string;
+  workouts: PlanWorkout[];
+};
+
+export type DevelopmentPlan = {
+  summary: string;
+  stages: PlanStage[];
+};
+
 export type RunnerProfile = {
+  age: number;
+  weightKg: number;
   currentDistanceMeters: number;
-  fiveKmTimeSeconds: number;
-  weeklyFrequency: number;
+  currentDurationSeconds: number;
   goalDistanceMeters: number;
-  goalTimeSeconds: number;
-  goalHorizonWeeks: number;
   level: Level;
   planStartedAt: string;
+  plan: DevelopmentPlan;
 };
 
 export type Preferences = {

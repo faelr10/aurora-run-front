@@ -1,287 +1,201 @@
-import type { PlanSession, PlanStep, RunnerProfile, RuntimeStep, WorkoutType } from '@/types/domain';
-import { addDays, formatMeters, mondayOf, parseDateKey, toDateKey } from '@/utils/format';
+import type { PlanWorkout, PlanWorkoutKind, PlanWorkoutStep, RunnerProfile, RuntimeStep } from '@/types/domain';
+import { formatMeters, formatPace } from '@/utils/format';
 
-export const WEEKDAY_LABELS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'] as const;
-
-const SCHEDULE: Record<number, { dow: number; type: Exclude<WorkoutType, 'rest'> }[]> = {
-  2: [
-    { dow: 2, type: 'intervals' },
-    { dow: 6, type: 'long' },
-  ],
-  3: [
-    { dow: 1, type: 'intervals' },
-    { dow: 3, type: 'easy' },
-    { dow: 6, type: 'long' },
-  ],
-  4: [
-    { dow: 1, type: 'intervals' },
-    { dow: 3, type: 'progressive' },
-    { dow: 5, type: 'easy' },
-    { dow: 6, type: 'long' },
-  ],
-  5: [
-    { dow: 0, type: 'easy' },
-    { dow: 1, type: 'intervals' },
-    { dow: 3, type: 'progressive' },
-    { dow: 5, type: 'recovery' },
-    { dow: 6, type: 'long' },
-  ],
-  6: [
-    { dow: 0, type: 'easy' },
-    { dow: 1, type: 'intervals' },
-    { dow: 2, type: 'recovery' },
-    { dow: 3, type: 'progressive' },
-    { dow: 5, type: 'easy' },
-    { dow: 6, type: 'long' },
-  ],
+export const WORKOUT_LABEL: Record<PlanWorkoutKind, string> = {
+  easy: 'Rodagem leve',
+  intervals: 'Tiros',
+  long: 'Longão',
 };
 
-const COPY: Record<Exclude<WorkoutType, 'rest'>, { title: string; objective: string }> = {
-  easy: {
-    title: 'Rodagem leve',
-    objective: 'Correr confortável, em um ritmo em que ainda dá para conversar.',
-  },
-  intervals: {
-    title: 'Treino de qualidade',
-    objective: 'Desenvolver velocidade e resistência com tiros curtos.',
-  },
-  progressive: {
-    title: 'Rodagem progressiva',
-    objective: 'Começar leve e terminar perto do ritmo que você quer sustentar.',
-  },
-  long: {
-    title: 'Longão',
-    objective: 'Aumentar a resistência com um ritmo constante.',
-  },
-  recovery: {
-    title: 'Recuperação',
-    objective: 'Soltar o corpo com um trote bem leve.',
-  },
+export function findWorkout(profile: RunnerProfile, workoutId: string): PlanWorkout | null {
+  for (const stage of profile.plan.stages) {
+    const workout = stage.workouts.find((item) => item.id === workoutId);
+    if (workout) return workout;
+  }
+  return null;
+}
+
+export function currentStageIndex(profile: RunnerProfile): number {
+  const index = profile.plan.stages.findIndex((stage) => stage.workouts.some((workout) => !workout.completedOn));
+  return index === -1 ? Math.max(0, profile.plan.stages.length - 1) : index;
+}
+
+export const WORKOUT_POINTS: Record<PlanWorkoutKind, number> = { easy: 50, intervals: 50, long: 80 };
+
+export type TimelineKind = 'warmup' | 'work' | 'rest' | 'steady' | 'cooldown';
+
+export type TimelineItem = {
+  id: string;
+  kind: TimelineKind;
+  tag: string;
+  headline: string;
+  target: string | null;
+  detail: string | null;
 };
 
-function lerp(from: number, to: number, progress: number): number {
-  const clamped = Math.min(1, Math.max(0, progress));
-  return from + (to - from) * clamped;
+export function stepPrescription(step: PlanWorkoutStep): string {
+  const times = step.repeats && step.repeats > 1 ? `${step.repeats} × ` : '';
+  const seconds = step.targetSeconds ?? (step.meters ? step.minutes * 60 : null);
+  if (step.meters && seconds) return `${times}${formatMeters(step.meters)} em ${formatEffort(seconds)}${paceSuffix(step.meters, seconds)}`;
+  if (step.meters) return `${times}${formatMeters(step.meters)}`;
+  return `${times}${step.minutes} min`;
 }
 
-function roundDistance(meters: number): number {
-  return Math.max(1000, Math.round(meters / 100) * 100);
+export function recoveryPhrase(step: PlanWorkoutStep): string | null {
+  const seconds = step.recoverySeconds ?? (step.recoveryMinutes ? step.recoveryMinutes * 60 : 0);
+  if (!seconds) return null;
+  const manner = step.recoveryDetail?.trim();
+  const time = spokenDuration(seconds);
+  if (!manner || manner.length > 42) return time;
+  return `${time} ${manner}`;
 }
 
-function paceSecondsPerKm(profile: RunnerProfile): number {
-  if (profile.fiveKmTimeSeconds <= 0) return 450;
-  return profile.fiveKmTimeSeconds / 5;
+export function intervalCount(workout: PlanWorkout): number {
+  return workout.steps.reduce((total, step) => total + ((step.repeats ?? 1) > 1 ? (step.repeats ?? 1) : 0), 0);
 }
 
-export function currentWeekIndex(profile: RunnerProfile, today = new Date()): number {
-  const start = mondayOf(parseDateKey(profile.planStartedAt));
-  const current = mondayOf(today);
-  const diff = Math.round((current.getTime() - start.getTime()) / 86_400_000 / 7);
-  return Math.max(0, Math.min(profile.goalHorizonWeeks - 1, diff));
-}
-
-export function planProgress(profile: RunnerProfile, today = new Date()): { week: number; total: number; ratio: number } {
-  const week = currentWeekIndex(profile, today) + 1;
-  const total = Math.max(1, profile.goalHorizonWeeks);
-  return { week, total, ratio: week / total };
-}
-
-export function buildPlan(profile: RunnerProfile): PlanSession[] {
-  const frequency = Math.min(6, Math.max(2, profile.weeklyFrequency));
-  const pattern = SCHEDULE[frequency] ?? SCHEDULE[3];
-  const start = mondayOf(parseDateKey(profile.planStartedAt));
-  const sessions: PlanSession[] = [];
-
-  for (let week = 0; week < profile.goalHorizonWeeks; week += 1) {
-    const monday = addDays(start, week * 7);
-    for (const slot of pattern) {
-      const date = toDateKey(addDays(monday, slot.dow));
-      sessions.push(makeSession(profile, week, date, slot.type));
-    }
-  }
-
-  return sessions.sort((left, right) => left.date.localeCompare(right.date));
-}
-
-export function sessionsForWeek(profile: RunnerProfile, sessions: PlanSession[], today = new Date()): PlanSession[] {
-  const monday = addDays(mondayOf(parseDateKey(profile.planStartedAt)), currentWeekIndex(profile, today) * 7);
-  const from = toDateKey(monday);
-  const to = toDateKey(addDays(monday, 7));
-  return sessions.filter((session) => session.date >= from && session.date < to);
-}
-
-export function weekDates(today = new Date()): string[] {
-  const monday = mondayOf(today);
-  return Array.from({ length: 7 }, (_, index) => toDateKey(addDays(monday, index)));
-}
-
-export function nextSession(sessions: PlanSession[], today = new Date()): PlanSession | null {
-  const key = toDateKey(today);
-  return sessions.find((session) => session.date >= key) ?? null;
-}
-
-export function sessionOn(sessions: PlanSession[], date: string): PlanSession | null {
-  return sessions.find((session) => session.date === date) ?? null;
-}
-
-export function timeline(session: PlanSession): { label: string; detail: string }[] {
-  const items: { label: string; detail: string }[] = [];
-  for (const step of session.steps) {
-    items.push({ label: step.label, detail: step.detail });
-    if ((step.repeats ?? 1) > 1 && step.recoverySeconds) {
-      items.push({
-        label: 'Recuperação',
-        detail: `${Math.round(step.recoverySeconds / 60)} min · trote leve`,
-      });
-    }
-  }
-  return items;
-}
-
-export function expandSteps(steps: PlanStep[]): RuntimeStep[] {
-  const runtime: RuntimeStep[] = [];
-  for (const step of steps) {
-    const count = step.repeats ?? 1;
-    if (count > 1 && step.target.type === 'distance') {
-      for (let index = 0; index < count; index += 1) {
-        runtime.push({
-          ...step,
-          id: `${step.id}-${index + 1}`,
-          label: `Tiro ${index + 1} de ${count}`,
-          detail: formatMeters(step.target.meters),
-          repeats: 1,
-          repeatIndex: index,
-          repeatCount: count,
+export function workoutTimeline(workout: PlanWorkout): TimelineItem[] {
+  const items: TimelineItem[] = [];
+  workout.steps.forEach((step, index) => {
+    const repeats = step.repeats ?? 1;
+    const recoverySeconds = step.recoverySeconds ?? (step.recoveryMinutes ? step.recoveryMinutes * 60 : 0);
+    const headline = step.meters ? formatMeters(step.meters) : `${step.minutes} min`;
+    const target = stepTarget(step);
+    if (repeats > 1) {
+      for (let repeat = 0; repeat < repeats; repeat += 1) {
+        items.push({
+          id: `${workout.id}-${index}-${repeat + 1}`,
+          kind: 'work',
+          tag: `${step.label} ${repeat + 1}/${repeats}`,
+          headline,
+          target,
+          detail: repeat === 0 ? step.detail : null,
         });
-        if (index < count - 1 && step.recoverySeconds) {
-          runtime.push({
-            id: `${step.id}-recovery-${index + 1}`,
-            label: 'Recuperação',
-            detail: `${Math.round(step.recoverySeconds / 60)} min · trote leve`,
-            kind: 'recovery',
-            target: { type: 'time', seconds: step.recoverySeconds },
-            cue: 'Solte o ritmo e respire.',
+        if (repeat < repeats - 1 && recoverySeconds > 0) {
+          items.push({
+            id: `${workout.id}-${index}-rest-${repeat + 1}`,
+            kind: 'rest',
+            tag: 'Descanso',
+            headline: shortDuration(recoverySeconds),
+            target: step.recoveryDetail?.trim() && step.recoveryDetail.trim().length <= 42 ? step.recoveryDetail.trim() : 'caminhando',
+            detail: repeat === 0 ? restCue(step) : null,
           });
         }
       }
-    } else {
-      runtime.push(step);
+      return;
     }
-  }
-  return runtime;
+    items.push({
+      id: `${workout.id}-${index}`,
+      kind: stepKind(step.label),
+      tag: step.label,
+      headline,
+      target,
+      detail: step.detail,
+    });
+  });
+  return items;
 }
 
-function makeSession(
-  profile: RunnerProfile,
-  week: number,
-  date: string,
-  type: Exclude<WorkoutType, 'rest'>,
-): PlanSession {
-  const progress = profile.goalHorizonWeeks <= 1 ? 1 : week / (profile.goalHorizonWeeks - 1);
-  const pace = paceSecondsPerKm(profile);
-  const easy = roundDistance(
-    lerp(profile.currentDistanceMeters * 0.75, Math.max(profile.currentDistanceMeters, profile.goalDistanceMeters * 0.55), progress),
-  );
-  const long = roundDistance(lerp(profile.currentDistanceMeters, profile.goalDistanceMeters, progress));
-  const id = `${date}-${type}`;
-  const copy = COPY[type];
-
-  if (type === 'intervals') {
-    const repeats = profile.level === 'beginner' ? 3 : profile.level === 'advanced' ? 6 : 4;
-    const recoverySeconds = 120;
-    const steps: PlanStep[] = [
-      timeStep(`${id}-warmup`, 'Aquecimento', '10 min · ritmo leve', 'warmup', 600, 'Comece leve para aquecer.'),
-      {
-        id: `${id}-reps`,
-        label: `${repeats} x 400 m`,
-        detail: 'ritmo forte',
-        kind: 'work',
-        target: { type: 'distance', meters: 400 },
-        repeats,
-        recoverySeconds,
-        targetPaceSecondsPerKm: Math.round(pace * 0.98),
-        cue: 'Mantenha o ritmo.',
-      },
-      timeStep(`${id}-cooldown`, 'Desaquecimento', '10 min · ritmo leve', 'cooldown', 600, 'Diminua o ritmo e solte os ombros.'),
-    ];
-    return {
-      id,
-      date,
-      type,
-      title: copy.title,
-      objective: copy.objective,
-      distanceMeters: repeats * 400,
-      durationSeconds: 600 + 600 + recoverySeconds * (repeats - 1),
-      steps,
-    };
-  }
-
-  if (type === 'progressive') {
-    const distance = roundDistance(easy * 1.1);
-    const part = roundDistance(distance / 3);
-    const cues = [
-      { label: 'Parte 1', detail: `${formatMeters(part)} · ritmo leve`, factor: 1.22, cue: 'Comece confortável.' },
-      { label: 'Parte 2', detail: `${formatMeters(part)} · ritmo moderado`, factor: 1.08, cue: 'Aumente um pouco o ritmo.' },
-      { label: 'Parte 3', detail: `${formatMeters(part)} · ritmo firme`, factor: 0.98, cue: 'Feche forte, sem sprint.' },
-    ];
-    return {
-      id,
-      date,
-      type,
-      title: copy.title,
-      objective: copy.objective,
-      distanceMeters: part * 3,
-      durationSeconds: null,
-      steps: cues.map((item, index) => ({
-        id: `${id}-part-${index + 1}`,
-        label: item.label,
-        detail: item.detail,
-        kind: 'steady',
-        target: { type: 'distance', meters: part },
-        targetPaceSecondsPerKm: Math.round(pace * item.factor),
-        cue: item.cue,
-      })),
-    };
-  }
-
-  const distance = type === 'long' ? long : type === 'recovery' ? roundDistance(easy * 0.6) : easy;
-  const factor = type === 'long' ? 1.15 : type === 'recovery' ? 1.35 : 1.22;
-  return {
-    id,
-    date,
-    type,
-    title: copy.title,
-    objective: copy.objective,
-    distanceMeters: distance,
-    durationSeconds: null,
-    steps: [
-      {
-        id: `${id}-steady`,
-        label: copy.title,
-        detail: `${formatMeters(distance)} · ${type === 'recovery' ? 'trote leve' : 'ritmo constante'}`,
-        kind: 'steady',
-        target: { type: 'distance', meters: distance },
-        targetPaceSecondsPerKm: Math.round(pace * factor),
-        cue: type === 'recovery' ? 'Mantenha um trote bem leve.' : 'Ache um ritmo que você consiga sustentar.',
-      },
-    ],
-  };
+function stepKind(label: string): 'warmup' | 'cooldown' | 'steady' {
+  const value = label.toLowerCase();
+  if (value.includes('desaquec') || value.includes('volta à calma')) return 'cooldown';
+  if (value.includes('aquec')) return 'warmup';
+  return 'steady';
 }
 
-function timeStep(
-  id: string,
-  label: string,
-  detail: string,
-  kind: PlanStep['kind'],
-  seconds: number,
-  cue: string,
-): PlanStep {
-  return {
-    id,
-    label,
-    detail,
-    kind,
-    target: { type: 'time', seconds },
-    cue,
-  };
+function stepTarget(step: PlanWorkoutStep): string | null {
+  if (!step.meters) return null;
+  const seconds = step.targetSeconds ?? step.minutes * 60;
+  return `${formatEffort(seconds)}${paceSuffix(step.meters, seconds)}`;
+}
+
+function shortDuration(totalSeconds: number): string {
+  const safe = Math.max(0, Math.round(totalSeconds));
+  const minutes = Math.floor(safe / 60);
+  const seconds = safe % 60;
+  if (minutes === 0) return `${seconds} s`;
+  if (seconds === 0) return `${minutes} min`;
+  return `${minutes} min ${seconds} s`;
+}
+
+export function formatEffort(totalSeconds: number): string {
+  const safe = Math.max(0, Math.round(totalSeconds));
+  const minutes = Math.floor(safe / 60);
+  const seconds = safe % 60;
+  if (minutes === 0) return `${seconds}s`;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+export function spokenDuration(totalSeconds: number): string {
+  const safe = Math.max(0, Math.round(totalSeconds));
+  const minutes = Math.floor(safe / 60);
+  const seconds = safe % 60;
+  if (minutes === 0) return `${seconds} segundos`;
+  if (seconds === 0) return minutes === 1 ? '1 minuto' : `${minutes} minutos`;
+  const minuteLabel = minutes === 1 ? '1 minuto' : `${minutes} minutos`;
+  return `${minuteLabel} e ${seconds} segundos`;
+}
+
+function paceSuffix(meters: number, seconds: number): string {
+  if (meters < 200) return '';
+  return ` · ${formatPace(seconds / (meters / 1000))}/km`;
+}
+
+function restCue(step: PlanWorkoutStep): string {
+  const manner = step.recoveryDetail?.trim().toLowerCase() ?? '';
+  if (manner.includes('trote')) return 'Trote bem solto. O próximo tiro precisa sair no mesmo tempo.';
+  if (manner.length > 42) return manner;
+  return 'Caminhe o tempo inteiro. A respiração precisa baixar antes do próximo tiro.';
+}
+
+export function toRuntimeSteps(workout: PlanWorkout): RuntimeStep[] {
+  const steps: RuntimeStep[] = [];
+  workout.steps.forEach((step, index) => {
+    const repeats = step.repeats ?? 1;
+    const pace = step.meters && step.targetSeconds && step.meters >= 200 ? step.targetSeconds / (step.meters / 1000) : undefined;
+    if (repeats > 1) {
+      for (let repeat = 0; repeat < repeats; repeat += 1) {
+        const effort = step.targetSeconds ? ` Alvo ${formatEffort(step.targetSeconds)}.` : '';
+        steps.push({
+          id: `${workout.id}-${index}-${repeat + 1}`,
+          label: `${step.label} ${repeat + 1} de ${repeats}`,
+          detail: step.detail,
+          kind: 'work',
+          target: step.meters ? { type: 'distance', meters: step.meters } : { type: 'time', seconds: (step.targetSeconds ?? step.minutes * 60) },
+          cue: `${step.detail}${effort}`,
+          repeatIndex: repeat + 1,
+          repeatCount: repeats,
+          ...(step.meters && step.targetSeconds ? { goalSeconds: step.targetSeconds } : {}),
+          ...(pace ? { targetPaceSecondsPerKm: pace } : {}),
+        });
+        const recovery = step.recoverySeconds ?? (step.recoveryMinutes ? step.recoveryMinutes * 60 : 0);
+        if (repeat < repeats - 1 && recovery > 0) {
+          const phrase = recoveryPhrase(step) ?? spokenDuration(recovery);
+          const manner = step.recoveryDetail?.trim();
+          steps.push({
+            id: `${workout.id}-${index}-recovery-${repeat + 1}`,
+            label: 'Descanso',
+            detail: `Descanso de ${phrase}.`,
+            kind: 'recovery',
+            target: { type: 'time', seconds: recovery },
+            cue: restCue(step),
+            manner: manner && manner.length <= 42 ? manner : 'caminhando',
+          });
+        }
+      }
+      return;
+    }
+    const kind = stepKind(step.label);
+    steps.push({
+      id: `${workout.id}-${index}`,
+      label: step.label,
+      detail: step.detail,
+      kind,
+      target: step.meters ? { type: 'distance', meters: step.meters } : { type: 'time', seconds: step.targetSeconds ?? step.minutes * 60 },
+      cue: step.targetSeconds ? `${step.detail} Alvo ${formatEffort(step.targetSeconds)}.` : step.detail,
+      ...(step.meters && step.targetSeconds ? { goalSeconds: step.targetSeconds } : {}),
+      ...(pace ? { targetPaceSecondsPerKm: pace } : {}),
+    });
+  });
+  return steps;
 }
