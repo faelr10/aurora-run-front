@@ -100,9 +100,6 @@ function GuidedRun() {
       last = now;
       const meters = Math.max(0, distanceRef.current - lastDistance.current);
       lastDistance.current = distanceRef.current;
-      // #region agent log
-      if (meters >= 50 || Math.round(delta) !== 1) fetch('http://127.0.0.1:7653/ingest/52888a3f-ebb4-4635-b41b-c8ffc74477b2',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c852c7'},body:JSON.stringify({sessionId:'c852c7',hypothesisId:'E',location:'guided.tsx:tick',message:'step clock tick',data:{delta:Math.round(delta*10)/10,meters:Math.round(meters),total:Math.round(distanceRef.current)},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       setEngine((current) => {
         if (current.status !== 'running' && current.status !== 'countdown') return current;
         return tick(current, steps, delta, current.status === 'running' ? meters : 0);
@@ -293,15 +290,7 @@ function GuidedRun() {
           <button className="coach-pause" type="button" onClick={togglePause}>
             {paused ? 'Retomar' : 'Pausar'}
           </button>
-          <button className="coach-check" type="button" onClick={() => setEngine((current) => {
-            const next = completeStep(current, steps);
-            const result = next.results[next.results.length - 1];
-            const done = steps.find((item) => item.id === result?.stepId);
-            // #region agent log
-            fetch('http://127.0.0.1:7653/ingest/52888a3f-ebb4-4635-b41b-c8ffc74477b2',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c852c7'},body:JSON.stringify({sessionId:'c852c7',hypothesisId:'D',location:'guided.tsx:completeStep',message:'stage checked by button',data:{label:done?.label??null,kind:done?.kind??null,target:done?.target??null,seconds:result?.seconds??null,meters:result?.meters??null,onTarget:result?.onTarget??null},timestamp:Date.now()})}).catch(()=>{});
-            // #endregion
-            return next;
-          })}>
+          <button className="coach-check" type="button" onClick={() => setEngine((current) => completeStep(current, steps))}>
             <Check /> Concluir etapa
           </button>
         </div>
@@ -344,7 +333,9 @@ function rowNote(step: RuntimeStep, result: StepResult | undefined): string {
   }
   if (result.onTarget) return `${time} · no tempo`;
   const over = Math.round(result.seconds - (step.goalSeconds ?? result.seconds));
-  return `${time} · +${over} s`;
+  if (over > 0) return `${time} · +${over} s`;
+  if (step.target.type === 'distance') return `${formatMeters(result.meters)} de ${formatMeters(step.target.meters)}`;
+  return time;
 }
 
 function stepGoal(step: RuntimeStep): string {

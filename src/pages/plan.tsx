@@ -149,9 +149,6 @@ export function Plan() {
           );
         })}
       </ol>
-      <Link className="journey-redo" to="/avaliacao">
-        Refazer treino
-      </Link>
       {error ? <p className="error">{error}</p> : null}
     </main>
   );

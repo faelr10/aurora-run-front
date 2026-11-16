@@ -159,12 +159,6 @@ export function useLiveActivity(input: {
       haltWatch();
       stopPermission();
       scheduleReleaseLockedTracking();
-      // #region agent log
-      const clientId = clientIdRef.current;
-      if (clientId) void getActivity(clientId).then((left) => {
-        fetch('http://127.0.0.1:7653/ingest/52888a3f-ebb4-4635-b41b-c8ffc74477b2',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c852c7'},body:JSON.stringify({sessionId:'c852c7',runId:'post-fix',hypothesisId:'A',location:'use-live-activity.ts:cleanup',message:'run screen unmounted',data:{clientId,closing:closingRef.current,status:left?.status??null,distance:left?.distanceMeters??null,anchor:left?.movingAnchorAt??null},timestamp:Date.now()})}).catch(()=>{});
-      });
-      // #endregion
     };
   }, [email, enabled, haltWatch, input.sessionId, input.source, input.title, startWatch]);
 

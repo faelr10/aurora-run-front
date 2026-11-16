@@ -191,12 +191,7 @@ export function insertRecording(input: {
     const existing = (await readActivities(ownerEmail))
       .filter((activity) => activity.status === 'recording' || activity.status === 'paused')
       .sort((left, right) => right.startedAt.localeCompare(left.startedAt))[0];
-    if (existing) {
-      // #region agent log
-      fetch('http://127.0.0.1:7653/ingest/52888a3f-ebb4-4635-b41b-c8ffc74477b2',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c852c7'},body:JSON.stringify({sessionId:'c852c7',hypothesisId:'A',location:'database.ts:insertRecording',message:'reused open recording',data:{existingId:existing.clientId,status:existing.status,source:existing.source,distance:existing.distanceMeters,startedAt:existing.startedAt,requestedSource:input.source},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-      return existing.clientId;
-    }
+    if (existing) return existing.clientId;
     const activity: Activity = {
       clientId: input.clientId,
       ownerEmail,
@@ -330,12 +325,7 @@ export function recordFixes(
     const recording = rows
       .filter((activity) => activity.status === 'recording')
       .sort((left, right) => right.startedAt.localeCompare(left.startedAt))[0];
-    if (!recording) {
-      // #region agent log
-      fetch('http://127.0.0.1:7653/ingest/52888a3f-ebb4-4635-b41b-c8ffc74477b2',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c852c7'},body:JSON.stringify({sessionId:'c852c7',hypothesisId:'C',location:'database.ts:recordFixes',message:'fix dropped, no recording',data:{fixes:fixes.length},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-      return;
-    }
+    if (!recording) return;
 
     const moving = liveMovingSeconds(recording);
     let draft = recording;
@@ -358,9 +348,6 @@ export function recordFixes(
     }
 
     heldFix = pending ? { clientId: recording.clientId, point: pending } : null;
-    // #region agent log
-    fetch('http://127.0.0.1:7653/ingest/52888a3f-ebb4-4635-b41b-c8ffc74477b2',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c852c7'},body:JSON.stringify({sessionId:'c852c7',hypothesisId:'C',location:'database.ts:recordFixes',message:'fixes reviewed',data:{incoming:fixes.length,committed:draft.points.length-recording.points.length,distance:Math.round(draft.distanceMeters),pending:Boolean(pending),unchanged:draft===recording},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     if (draft === recording) return;
 
     await writeActivity(draft);

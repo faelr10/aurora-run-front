@@ -894,17 +894,6 @@ h2 { font-size: 22px; letter-spacing: -0.4px; }
 .plan-figures strong { font-size: 34px; letter-spacing: -1.2px; line-height: 1; }
 .plan-figures span { color: #8d9791; font-size: 13px; font-weight: 700; }
 .done-note { color: #d6ff3e; font-size: 12px; font-weight: 700; }
-.journey-redo {
-  min-height: 48px;
-  border: 1px solid #2c3330;
-  border-radius: 999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #f4f7f5;
-  font-weight: 800;
-}
-
 .plan-detail {
   min-height: 100dvh;
   display: flex;
@@ -1039,28 +1028,29 @@ h2 { font-size: 22px; letter-spacing: -0.4px; }
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 14px 18px 0;
+  padding: calc(14px + env(safe-area-inset-top)) 18px 0;
   background: #070908;
   color: #f4f7f5;
 }
 .coach svg.fill { fill: currentColor; stroke: none; }
 .coach svg.stroke { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.coach-top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; }
-.coach-top .back { color: #f4f7f5; display: inline-flex; align-items: center; gap: 4px; min-height: 36px; font-size: 15px; letter-spacing: 0; text-transform: none; }
-.coach-top .back svg { width: 18px; height: 18px; }
-.coach-top > p { color: #8d9791; font-size: 13px; font-weight: 800; }
-.coach-top .journey-level { justify-self: end; }
-.coach-segments { display: flex; gap: 3px; }
-.coach-segments i { flex: 1; height: 6px; border-radius: 99px; background: #242a26; overflow: hidden; display: block; }
-.coach-segments i.work { flex: 1.4; }
+.coach-top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; min-height: 36px; }
+.coach-top .back { color: #f4f7f5; display: inline-flex; align-items: center; gap: 2px; min-height: 36px; margin-left: -6px; font-size: 15px; line-height: 1; letter-spacing: 0; text-transform: none; }
+.coach-top .back svg { width: 20px; height: 20px; flex: none; }
+.coach-top > p { color: #8d9791; font-size: 13px; font-weight: 800; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.coach-top .journey-level { justify-self: end; line-height: 1; }
+.coach-segments { display: flex; gap: 4px; }
+.coach-segments i { flex: 1; min-width: 0; height: 5px; border-radius: 99px; background: #242a26; overflow: hidden; display: block; }
 .coach-segments i.done { background: #d6ff3e; }
 .coach-segments i.missed { background: #ff5c48; }
 .coach-segments i.skipped { background: #4a524d; }
 .coach-segments i b { display: block; height: 100%; background: #d6ff3e; transition: width 0.9s linear; }
 .coach-card { background: #161b18; border-radius: 26px; padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 6px; }
 .coach-card.work, .coach-card.ready { background: #d6ff3e; color: #101412; }
+.coach-card.ready { align-items: center; text-align: center; padding-top: 18px; }
+.coach-card.ready h1 { margin-top: 2px; }
 .coach-card.paused { opacity: 0.75; }
-.coach-card header { display: flex; align-items: center; justify-content: space-between; }
+.coach-card header { display: flex; align-items: center; justify-content: space-between; min-height: 24px; }
 .coach-card em {
   width: fit-content;
   font-style: normal;
@@ -1074,7 +1064,7 @@ h2 { font-size: 22px; letter-spacing: -0.4px; }
   padding: 5px 10px;
 }
 .coach-card header b { font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; }
-.coach-card h1 { font-size: 72px; line-height: 0.95; letter-spacing: -3px; font-variant-numeric: tabular-nums; margin-top: 6px; }
+.coach-card h1 { font-size: 72px; line-height: 0.95; letter-spacing: -3px; font-variant-numeric: tabular-nums; white-space: nowrap; margin-top: 6px; }
 .coach-card.ready h1 { font-size: 96px; }
 .coach-sub { color: #8d9791; font-size: 14px; font-weight: 700; }
 .coach-card.work .coach-sub, .coach-card.ready .coach-sub { color: #243026; }
@@ -1085,9 +1075,9 @@ h2 { font-size: 22px; letter-spacing: -0.4px; }
 .coach-detail { color: #8d9791; font-size: 13px; line-height: 1.35; margin-top: 4px; }
 .coach-card.work .coach-detail, .coach-card.ready .coach-detail { color: #243026; }
 .coach-split { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
-.coach-split p { background: rgba(16, 20, 18, 0.1); border-radius: 14px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; }
+.coach-split p { min-width: 0; background: rgba(16, 20, 18, 0.1); border-radius: 14px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; }
 .coach-split span { font-size: 11px; font-weight: 700; color: #243026; }
-.coach-split strong { font-size: 18px; letter-spacing: -0.4px; font-variant-numeric: tabular-nums; }
+.coach-split strong { font-size: 18px; letter-spacing: -0.4px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .coach-split p.behind { background: #101412; color: #ff9d2e; }
 .coach-split p.ahead { background: #101412; color: #7fd8ff; }
 .coach-split p.behind span, .coach-split p.ahead span { color: #8d9791; }
@@ -1102,15 +1092,21 @@ h2 { font-size: 22px; letter-spacing: -0.4px; }
   padding: 8px 12px;
   font-weight: 800;
   width: fit-content;
+  transform-origin: left center;
   animation: coach-pulse 1s ease-in-out infinite;
 }
 .coach-next svg { width: 14px; height: 14px; }
 .coach-next strong { font-size: 18px; }
 @keyframes coach-pulse { 50% { transform: scale(1.04); } }
 .coach-warning { color: #ff9d2e; font-size: 13px; font-weight: 700; }
+.coach .live-stats div { min-width: 0; }
+.coach .live-stats span, .coach .live-stats strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.coach .live-stats strong { font-variant-numeric: tabular-nums; }
+.coach-list { padding-bottom: 8px; }
 .coach-list ol { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; position: relative; }
-.coach-list ol::before { content: ""; position: absolute; left: 11px; top: 14px; bottom: 14px; width: 2px; background: #2a312c; }
-.coach-list li { display: grid; grid-template-columns: 24px 1fr; gap: 12px; align-items: center; padding: 5px 0; }
+.coach-list ol::before { content: ""; position: absolute; left: 11px; top: 17px; bottom: 17px; width: 2px; background: #2a312c; }
+.coach-list li { display: grid; grid-template-columns: 24px 1fr; gap: 12px; align-items: center; min-height: 34px; }
+.coach-list li.recovery { min-height: 28px; }
 .coach-list .node {
   width: 24px;
   height: 24px;
@@ -1131,8 +1127,8 @@ h2 { font-size: 22px; letter-spacing: -0.4px; }
 .coach-list li.missed .node { background: #ff5c48; box-shadow: none; }
 .coach-list li.skipped .node { background: #2a312c; box-shadow: none; color: #8d9791; }
 .coach-list li.now .node { box-shadow: inset 0 0 0 2px #d6ff3e, inset 0 0 0 5px #070908, inset 0 0 0 8px #d6ff3e; }
-.coach-list li p { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.coach-list li strong { font-size: 14px; }
+.coach-list li p { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0; }
+.coach-list li strong { font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .coach-list li p span { color: #8d9791; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .coach-list li.recovery strong { color: #8d9791; font-weight: 600; font-size: 13px; }
 .coach-list li.wait strong { color: #c5cec8; }
@@ -1143,8 +1139,8 @@ h2 { font-size: 22px; letter-spacing: -0.4px; }
   bottom: 0;
   z-index: 2;
   margin: auto -18px 0;
-  padding: 18px 18px calc(10px + env(safe-area-inset-bottom));
-  background: linear-gradient(to bottom, rgba(7, 9, 8, 0), #070908 30%);
+  padding: 22px 18px calc(10px + env(safe-area-inset-bottom));
+  background: linear-gradient(to bottom, rgba(7, 9, 8, 0), #070908 22px);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1164,8 +1160,8 @@ h2 { font-size: 22px; letter-spacing: -0.4px; }
 .coach-pause { background: #161b18; color: #f4f7f5; border: 1px solid #2c3330; }
 .coach-check { background: #d6ff3e; color: #101412; }
 .coach-check svg { width: 18px; height: 18px; }
-.coach-actions p { display: flex; justify-content: space-between; }
-.coach-actions p button { border: 0; background: transparent; color: #8d9791; font-size: 14px; font-weight: 700; padding: 8px 4px; }
+.coach-actions p { display: flex; justify-content: space-between; padding: 0 8px; }
+.coach-actions p button { border: 0; background: transparent; color: #8d9791; font-size: 14px; font-weight: 700; padding: 8px 0; min-height: 36px; }
 .coach-actions p button:last-child { color: #ff5c48; }
 .plan-flow { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; }
 .plan-flow li { display: grid; grid-template-columns: 28px 1fr; gap: 12px; position: relative; padding-bottom: 18px; }
@@ -1258,5 +1254,26 @@ h2 { font-size: 22px; letter-spacing: -0.4px; }
   .journey-go { margin-top: 6px; }
   .journey-go a { min-height: 36px; padding: 0 12px; font-size: 13px; }
   .journey-go button { width: 36px; height: 36px; }
-  .journey-redo { min-height: 40px; font-size: 13px; }
+  .coach { gap: 10px; padding-left: 16px; padding-right: 16px; }
+  .coach-top .back { font-size: 14px; }
+  .coach-top > p { font-size: 12px; }
+  .coach-card { padding: 14px 16px 16px; border-radius: 22px; }
+  .coach-card h1 { font-size: 60px; letter-spacing: -2.4px; }
+  .coach-card.ready h1 { font-size: 80px; }
+  .coach-sub { font-size: 13px; }
+  .coach-detail { font-size: 12px; }
+  .coach-split { gap: 6px; }
+  .coach-split p { padding: 7px 9px; }
+  .coach-split strong { font-size: 16px; }
+  .coach .live-stats { gap: 6px; }
+  .coach .live-stats div { padding: 10px; border-radius: 14px; }
+  .coach .live-stats span { font-size: 11px; }
+  .coach .live-stats strong { font-size: 17px; }
+  .coach-list .mission-head h2 { font-size: 16px; }
+  .coach-list .mission-head span { font-size: 11px; }
+  .coach-list li strong { font-size: 13px; }
+  .coach-list li.recovery strong, .coach-list li p span { font-size: 12px; }
+  .coach-actions { margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; }
+  .coach-pause, .coach-check { min-height: 50px; font-size: 15px; }
+  .coach-actions p button { font-size: 13px; }
 }

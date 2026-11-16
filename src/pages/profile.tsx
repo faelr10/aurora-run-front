@@ -40,13 +40,18 @@ export function Profile() {
             <p className="muted">{email}</p>
           </div>
           {profile?.plan && typeof profile.age === 'number' ? (
-            <section className="group">
-              <Row label="Nível" value={levels[profile.level]} />
-              <Row label="Idade" value={rangeLabel('age', profile.age) ?? `${profile.age} anos`} />
-              <Row label="Peso" value={rangeLabel('weightKg', profile.weightKg) ?? `${profile.weightKg} kg`} />
-              <Row label="Distância atual" value={`${rangeLabel('currentDistanceMeters', profile.currentDistanceMeters) ?? `${formatDistanceKm(profile.currentDistanceMeters, 1)} km`} em ${durationLabel(profile.currentDistanceMeters, profile.currentDurationSeconds) ?? formatDuration(profile.currentDurationSeconds)}`} />
-              <Row label="Meta" value={rangeLabel('goalDistanceMeters', profile.goalDistanceMeters) ?? `${formatDistanceKm(profile.goalDistanceMeters, 1)} km`} />
-            </section>
+            <>
+              <section className="group">
+                <Row label="Nível" value={levels[profile.level]} />
+                <Row label="Idade" value={rangeLabel('age', profile.age) ?? `${profile.age} anos`} />
+                <Row label="Peso" value={rangeLabel('weightKg', profile.weightKg) ?? `${profile.weightKg} kg`} />
+                <Row label="Distância atual" value={`${rangeLabel('currentDistanceMeters', profile.currentDistanceMeters) ?? `${formatDistanceKm(profile.currentDistanceMeters, 1)} km`} em ${durationLabel(profile.currentDistanceMeters, profile.currentDurationSeconds) ?? formatDuration(profile.currentDurationSeconds)}`} />
+                <Row label="Meta" value={rangeLabel('goalDistanceMeters', profile.goalDistanceMeters) ?? `${formatDistanceKm(profile.goalDistanceMeters, 1)} km`} />
+              </section>
+              <Link className="btn outline" to="/avaliacao">
+                Refazer plano de treino
+              </Link>
+            </>
           ) : (
             <Locked title="Plano bloqueado" message="Os dados do plano aparecem quando houver um treino vinculado à conta." />
           )}
