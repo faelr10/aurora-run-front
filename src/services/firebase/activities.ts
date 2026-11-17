@@ -20,6 +20,7 @@ export async function syncFirebaseActivities(email: string): Promise<void> {
   const saved = await downloadActivities(user.uid, email);
   if (pending.length > 0 || saved > 0) {
     await queryClient.invalidateQueries({ queryKey: ['activities'] });
+    await queryClient.invalidateQueries({ queryKey: ['activity'] });
   }
 }
 
@@ -47,8 +48,10 @@ async function downloadActivities(uid: string, email: string): Promise<number> {
     const remoteStages = readStages(data.stages);
     const existing = await getActivity(item.id);
     if (existing) {
-      if (remoteStages.length > 0 && (!existing.stages || existing.stages.length === 0)) {
-        await saveCompletedActivity({ ...existing, stages: remoteStages });
+      const summary = summaryFromRemote(data);
+      const withStages = remoteStages.length > 0 && (!existing.stages || existing.stages.length === 0);
+      if (withStages || summaryChanged(existing, summary)) {
+        await saveCompletedActivity({ ...existing, ...summary, ...(withStages ? { stages: remoteStages } : {}) });
         saved += 1;
       }
       continue;
@@ -71,6 +74,26 @@ async function downloadActivities(uid: string, email: string): Promise<number> {
     saved += 1;
   }
   return saved;
+}
+
+function summaryFromRemote(data: Activity): Pick<Activity, 'distanceMeters' | 'movingSeconds' | 'averagePaceSecondsPerKm' | 'calories' | 'splits'> {
+  return {
+    distanceMeters: data.distanceMeters,
+    movingSeconds: data.movingSeconds,
+    averagePaceSecondsPerKm: data.averagePaceSecondsPerKm,
+    calories: data.calories,
+    splits: data.splits ?? [],
+  };
+}
+
+function summaryChanged(existing: Activity, summary: ReturnType<typeof summaryFromRemote>): boolean {
+  return (
+    existing.distanceMeters !== summary.distanceMeters ||
+    existing.movingSeconds !== summary.movingSeconds ||
+    existing.averagePaceSecondsPerKm !== summary.averagePaceSecondsPerKm ||
+    existing.calories !== summary.calories ||
+    JSON.stringify(existing.splits) !== JSON.stringify(summary.splits)
+  );
 }
 
 function readStages(value: unknown): ActivityStage[] {

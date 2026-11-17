@@ -25,9 +25,26 @@ export function Profile() {
   const loadDemo = useSession((state) => state.loadDemo);
   const clearDemo = useSession((state) => state.clearDemo);
   const signOut = useSession((state) => state.signOut);
+  const reload = useSession((state) => state.reload);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function refresh() {
+    if (refreshing) return;
+    setRefreshing(true);
+    setMessage(null);
+    try {
+      await reload();
+      await queryClient.invalidateQueries();
+      setMessage('Dados atualizados.');
+    } catch (cause) {
+      setMessage(cause instanceof Error ? cause.message : 'Não foi possível atualizar.');
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   const hasAccount = mode === 'local' || mode === 'remote' || mode === 'firebase';
 
@@ -92,6 +109,9 @@ export function Profile() {
       {hasAccount ? (
         <>
           <h2>Ajustes</h2>
+          <button className="btn outline" type="button" onClick={() => void refresh()} disabled={refreshing}>
+            {refreshing ? 'Atualizando...' : 'Atualizar dados'}
+          </button>
           <button
             className="btn outline"
             type="button"

@@ -58,6 +58,7 @@ type SessionState = {
   loadDemo: () => Promise<void>;
   clearDemo: () => Promise<void>;
   resetOnboarding: () => Promise<void>;
+  reload: () => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -340,6 +341,45 @@ export const useSession = create<SessionState>((set, get) => ({
       }
     }
     set({ profile: null, demo: false });
+  },
+
+  reload: async () => {
+    const current = get();
+    if (!current.email) return;
+    if (current.mode === 'firebase') {
+      const user = await waitForFirebaseUser();
+      if (!user) throw new Error('Entre de novo para atualizar.');
+      const cloud = await readCloudUser(user);
+      set({
+        email: cloud.email,
+        name: cloud.name,
+        profile: cloud.profile,
+        preferences: cloud.preferences,
+        demo: false,
+      });
+      await syncFirebaseActivities(cloud.email);
+      return;
+    }
+    if (current.mode === 'remote') {
+      const me = await fetchMe();
+      set({
+        email: me.user.email,
+        name: me.user.name,
+        profile: me.profile,
+        preferences: { ...defaultPreferences, ...me.preferences },
+        demo: false,
+      });
+      await syncActivities(me.user.email);
+      return;
+    }
+    const account = await findAccount(current.email);
+    if (!account) return;
+    set({
+      name: account.name,
+      profile: account.profile,
+      preferences: account.preferences,
+      demo: Boolean(account.profileBackup),
+    });
   },
 
   signOut: async () => {
