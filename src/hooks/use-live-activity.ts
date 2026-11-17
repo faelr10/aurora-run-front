@@ -19,7 +19,7 @@ import {
   resumeRecording,
 } from '@/services/storage/database';
 import { useSession } from '@/stores/session';
-import type { Activity, ActivitySource } from '@/types/domain';
+import type { Activity, ActivitySource, ActivityStage } from '@/types/domain';
 import { createId } from '@/utils/format';
 import { currentPaceSecondsPerKm } from '@/utils/geo';
 
@@ -190,14 +190,14 @@ export function useLiveActivity(input: {
     if (activity && activity.status !== 'completed') await deleteActivity(activity.clientId);
   }, [haltWatch, state.activity]);
 
-  const finish = useCallback(async (): Promise<Activity | null> => {
+  const finish = useCallback(async (stages?: ActivityStage[]): Promise<Activity | null> => {
     closingRef.current = true;
     const activity = state.activity ?? (clientIdRef.current ? await getActivity(clientIdRef.current) : null);
     if (!activity) return null;
     releaseLockedTracking();
     haltWatch();
     const moving = liveMovingSeconds(activity);
-    await finishRecording(activity.clientId, moving, new Date().toISOString());
+    await finishRecording(activity.clientId, moving, new Date().toISOString(), stages);
     const next = await getActivity(activity.clientId);
     await queryClient.invalidateQueries({ queryKey: ['activities'] });
     await queryClient.invalidateQueries({ queryKey: ['recording'] });

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
+import { Logo } from '@/components/logo';
 import { Shell } from '@/components/shell';
 import { ActivityDetail, ActivityDone, Notifications } from '@/pages/activity';
 import { Login, Register } from '@/pages/auth';
@@ -25,7 +26,7 @@ export default function App() {
   if (!ready) {
     return (
       <div className="boot">
-        <p className="brand">AURORA RUN</p>
+        <Logo size={112} label="Aurora Run" />
       </div>
     );
   }

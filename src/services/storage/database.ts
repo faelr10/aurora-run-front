@@ -1,4 +1,4 @@
-import type { Activity, ActivitySource, Preferences, RunnerProfile, Split, TrackPoint } from '@/types/domain';
+import type { Activity, ActivitySource, ActivityStage, Preferences, RunnerProfile, Split, TrackPoint } from '@/types/domain';
 import { defaultPreferences } from '@/types/domain';
 import { estimateCalories, reviewFix, type GeoPoint } from '@/utils/geo';
 
@@ -238,7 +238,7 @@ export function resumeRecording(clientId: string, anchorAt: string): Promise<voi
   });
 }
 
-export function finishRecording(clientId: string, movingSeconds: number, endedAt: string): Promise<void> {
+export function finishRecording(clientId: string, movingSeconds: number, endedAt: string, stages?: ActivityStage[]): Promise<void> {
   return enqueue(async () => {
     const activity = await readOne(clientId);
     if (!activity) return;
@@ -252,6 +252,7 @@ export function finishRecording(clientId: string, movingSeconds: number, endedAt
       movingAnchorAt: null,
       averagePaceSecondsPerKm: activity.distanceMeters >= 10 ? Math.round(moving / (activity.distanceMeters / 1000)) : 0,
       calories: estimateCalories(activity.distanceMeters),
+      ...(stages && stages.length > 0 ? { stages } : {}),
     });
   });
 }

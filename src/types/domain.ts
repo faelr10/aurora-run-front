@@ -59,6 +59,7 @@ export type PlanWorkout = {
   durationMinutes: number;
   steps: PlanWorkoutStep[];
   completedOn: string | null;
+  activityId?: string | null;
 };
 
 export type PlanStage = {
@@ -104,6 +105,19 @@ export type Split = {
   paceSecondsPerKm: number;
 };
 
+export type ActivityStage = {
+  id: string;
+  label: string;
+  kind: StepKind;
+  status: 'done' | 'skipped' | 'partial';
+  seconds: number;
+  meters: number;
+  targetSeconds: number | null;
+  targetMeters: number | null;
+  goalSeconds: number | null;
+  onTarget: boolean | null;
+};
+
 export type ActivitySource = 'free' | 'guided';
 export type ActivityStatus = 'recording' | 'paused' | 'completed';
 
@@ -125,6 +139,7 @@ export type Activity = {
   syncedAt: string | null;
   points: TrackPoint[];
   splits: Split[];
+  stages?: ActivityStage[];
 };
 
 export const defaultPreferences: Preferences = {

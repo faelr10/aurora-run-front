@@ -1,4 +1,6 @@
-import type { RuntimeStep } from '@/types/domain';
+import type { ActivityStage, RuntimeStep } from '@/types/domain';
+import { formatEffort } from '@/features/training/plan';
+import { formatMeters } from '@/utils/format';
 
 export const START_COUNTDOWN = 10;
 
@@ -102,6 +104,61 @@ export function judgeStep(step: RuntimeStep, seconds: number, meters: number): b
   if (meters < step.target.meters * 0.97) return false;
   if (!step.goalSeconds) return true;
   return seconds <= step.goalSeconds + Math.max(2, step.goalSeconds * 0.02);
+}
+
+export function recordedStages(steps: RuntimeStep[], snapshot: EngineSnapshot): ActivityStage[] {
+  const saved = snapshot.results.flatMap((result) => {
+    const step = steps.find((item) => item.id === result.stepId);
+    return step ? [toStage(step, result.status, result.seconds, result.meters, result.onTarget)] : [];
+  });
+  const open = steps[snapshot.stepIndex];
+  if (snapshot.results.length < steps.length && open && !saved.some((stage) => stage.id === open.id)) {
+    saved.push(toStage(open, 'partial', Math.round(snapshot.stepMovingSeconds), Math.round(snapshot.stepDistanceMeters), null));
+  }
+  return saved;
+}
+
+export function stageNote(stage: ActivityStage): string {
+  if (stage.status === 'skipped') return 'pulado';
+  const time = formatEffort(stage.seconds);
+  if (stage.status === 'partial') return stage.seconds > 0 || stage.meters > 0 ? `${time} · interrompido` : 'interrompido';
+  if (stage.kind === 'work' && stage.onTarget === true) return `${time} · no tempo`;
+  if (stage.kind === 'work' && stage.onTarget === false && stage.goalSeconds != null) {
+    const over = stage.seconds - stage.goalSeconds;
+    if (over > 0) return `${time} · +${over} s`;
+    if (stage.targetMeters) return `${formatMeters(stage.meters)} de ${formatMeters(stage.targetMeters)}`;
+  }
+  if (stage.kind === 'work' && stage.targetMeters) return `${formatMeters(stage.meters)} em ${time}`;
+  return time;
+}
+
+function toStage(
+  step: RuntimeStep,
+  status: ActivityStage['status'],
+  seconds: number,
+  meters: number,
+  onTarget: boolean | null,
+): ActivityStage {
+  return {
+    id: step.id,
+    label: stageLabel(step),
+    kind: step.kind,
+    status,
+    seconds,
+    meters,
+    targetSeconds: step.target.type === 'time' ? step.target.seconds : null,
+    targetMeters: step.target.type === 'distance' ? step.target.meters : null,
+    goalSeconds: step.goalSeconds ?? null,
+    onTarget,
+  };
+}
+
+function stageLabel(step: RuntimeStep): string {
+  if (step.kind === 'work' && step.repeatIndex && step.repeatCount) {
+    return `${step.label.replace(/\s+\d+\s+de\s+\d+$/, '')} ${step.repeatIndex}/${step.repeatCount}`;
+  }
+  if (step.kind === 'recovery') return `Descanso · ${step.manner ?? 'caminhando'}`;
+  return step.label;
 }
 
 function advance(

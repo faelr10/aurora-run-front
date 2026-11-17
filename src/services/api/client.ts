@@ -121,6 +121,7 @@ export function uploadActivity(activity: Activity): Promise<void> {
       calories: activity.calories,
       points: activity.points,
       splits: activity.splits,
+      stages: activity.stages ?? [],
     }),
   });
 }

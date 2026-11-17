@@ -116,6 +116,7 @@ export function Plan() {
                 {state === 'done' ? <Check /> : null}
               </span>
               <article>
+                {state === 'done' ? <Link className="journey-hit" to={`/treino/${workout.id}`} aria-label={`Ver ${workout.title}`} /> : null}
                 <header>
                   {state === 'done' ? <em>Concluído</em> : null}
                   {state === 'next' ? <em>Próximo treino</em> : null}
@@ -128,6 +129,7 @@ export function Plan() {
                 {state === 'done' ? null : <p>{workout.objective}</p>}
                 <p className="meta">
                   {distance} · {workout.durationMinutes} min
+                  {state === 'done' ? <span>Ver corrida</span> : null}
                   {state === 'wait' && !stageLocked ? (
                     <button type="button" onClick={() => void mark(workout)}>
                       <Check /> Marcar como feito

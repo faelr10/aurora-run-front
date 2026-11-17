@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+import { Logo } from '@/components/logo';
 import { loginSchema, registerSchema } from '@/features/onboarding/schema';
 import { firebaseConfigured } from '@/services/firebase/app';
 import { useSession } from '@/stores/session';
@@ -8,7 +9,10 @@ import { useSession } from '@/stores/session';
 export function Welcome() {
   return (
     <main className="screen auth-screen">
-      <p className="brand">AURORA RUN</p>
+      <div className="auth-brand">
+        <Logo size={96} />
+        <p className="brand">AURORA RUN</p>
+      </div>
       <h1>Corrida com plano, ritmo e mapa.</h1>
       <p className="muted">O treino fica neste aparelho. A distância só entra quando o GPS é preciso.</p>
       <div className="pin">
@@ -56,6 +60,7 @@ export function Login() {
         Voltar
       </Link>
       <header className="auth-intro">
+        <Logo size={64} />
         <p className="eyebrow">Conta</p>
         <h1>Entrar</h1>
         <p className="muted">Use o e-mail da sua conta para recuperar perfil e corridas.</p>
@@ -115,6 +120,7 @@ export function Register() {
         Voltar
       </Link>
       <header className="auth-intro">
+        <Logo size={64} />
         <p className="eyebrow">Conta</p>
         <h1>Criar conta</h1>
         <p className="muted">

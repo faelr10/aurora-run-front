@@ -53,7 +53,7 @@ type SessionState = {
   register: (input: { name: string; email: string; password: string }) => Promise<void>;
   login: (input: { email: string; password: string }) => Promise<void>;
   completeOnboarding: (values: OnboardingValues) => Promise<void>;
-  completeWorkout: (workoutId: string) => Promise<void>;
+  completeWorkout: (workoutId: string, activityId?: string | null) => Promise<void>;
   updatePreferences: (preferences: Preferences) => Promise<void>;
   loadDemo: () => Promise<void>;
   clearDemo: () => Promise<void>;
@@ -224,21 +224,33 @@ export const useSession = create<SessionState>((set, get) => ({
     await persistProfile(profile, set, get);
   },
 
-  completeWorkout: async (workoutId) => {
+  completeWorkout: async (workoutId, activityId) => {
     const current = get();
     const profile = current.profile;
     if (!profile) return;
     const today = toDateKey(new Date());
+    let changed = false;
     const next: RunnerProfile = {
       ...profile,
       plan: {
         ...profile.plan,
         stages: profile.plan.stages.map((stage) => ({
           ...stage,
-          workouts: stage.workouts.map((workout) => (workout.id === workoutId && !workout.completedOn ? { ...workout, completedOn: today } : workout)),
+          workouts: stage.workouts.map((workout) => {
+            if (workout.id !== workoutId) return workout;
+            if (activityId) {
+              if (workout.completedOn === today && workout.activityId === activityId) return workout;
+              changed = true;
+              return { ...workout, completedOn: today, activityId };
+            }
+            if (workout.completedOn) return workout;
+            changed = true;
+            return { ...workout, completedOn: today };
+          }),
         })),
       },
     };
+    if (!changed) return;
     if (current.demo) {
       set({ profile: next });
       return;

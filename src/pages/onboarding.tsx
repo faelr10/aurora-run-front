@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { Logo } from '@/components/logo';
 import { onboardingSchema, type OnboardingValues } from '@/features/onboarding/schema';
 import { planQuestions, questionsFor } from '@/features/onboarding/steps';
 import { useSession } from '@/stores/session';
@@ -74,6 +75,7 @@ export function Onboarding() {
           </>
         ) : (
           <>
+            <Logo size={88} />
             <span className="building-spin" aria-hidden="true" />
             <p className="eyebrow">Plano</p>
             <h1>Estamos montando seu treino</h1>

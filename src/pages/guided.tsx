@@ -5,6 +5,7 @@ import { Locked } from '@/components/locked';
 import { coachLine, introLine, kilometerLine, paceState } from '@/features/training/coach';
 import {
   completeStep,
+  recordedStages,
   createEngine,
   finishEngine,
   pauseEngine,
@@ -129,8 +130,8 @@ function GuidedRun() {
     if (engine.status !== 'finished' || finished.current) return;
     finished.current = true;
     const completedAll = engine.results.length >= steps.length;
-    void finishRef.current().then(async (activity) => {
-      if (completedAll && session?.id) await completeWorkout(session.id).catch(() => undefined);
+    void finishRef.current(recordedStages(steps, engine)).then(async (activity) => {
+      if (completedAll && session?.id) await completeWorkout(session.id, activity?.clientId).catch(() => undefined);
       if (!activity) {
         navigate(session ? `/treino/${session.id}` : '/plano', { replace: true });
         return;

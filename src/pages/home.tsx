@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 
+import { Logo } from '@/components/logo';
 import { totals } from '@/features/history/stats';
 import { useActivities, useRecording } from '@/hooks/use-live-activity';
 import { primeLocation } from '@/services/location';
@@ -9,7 +10,6 @@ import { formatDistanceKm, formatDuration, formatWeekday, mondayOf, parseDateKey
 const WEEK_LETTERS = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
 
 export function Home() {
-  const name = useSession((state) => state.name);
   const mode = useSession((state) => state.mode);
   const profile = useSession((state) => state.profile);
   const hasAccount = mode === 'local' || mode === 'remote' || mode === 'firebase';
@@ -17,8 +17,6 @@ export function Home() {
   const activities = useActivities();
   const recording = useRecording();
   const navigate = useNavigate();
-  const firstName = name?.split(' ')[0];
-  const initial = (firstName ?? 'A').slice(0, 1).toUpperCase();
   const today = new Date();
   const todayKey = toDateKey(today);
   const weekStart = mondayOf(parseDateKey(todayKey));
@@ -40,9 +38,7 @@ export function Home() {
   return (
     <main className="screen home">
       <header className="home-top">
-        <div className="avatar" aria-hidden="true">
-          {initial}
-        </div>
+        <Logo size={42} label="Aurora Run" />
         <div>
           <strong>{capitalize(formatWeekday(todayKey))}</strong>
           <p>{longDayMonth(todayKey)}</p>

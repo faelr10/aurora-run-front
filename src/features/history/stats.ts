@@ -3,6 +3,15 @@ import { addDays, mondayOf, parseDateKey, toDateKey } from '@/utils/format';
 
 export type ActivityFilter = 'all' | 'free' | 'guided';
 
+export function planRun(activities: Activity[], workout: { id: string; activityId?: string | null }): Activity | null {
+  const done = activities.filter((activity) => activity.status === 'completed');
+  if (workout.activityId) {
+    const linked = done.find((activity) => activity.clientId === workout.activityId);
+    if (linked) return linked;
+  }
+  return done.find((activity) => activity.sessionId === workout.id) ?? null;
+}
+
 export function filterActivities(activities: Activity[], filter: ActivityFilter): Activity[] {
   if (filter === 'all') return activities;
   return activities.filter((activity) => activity.source === filter);

@@ -2,17 +2,22 @@ import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { Locked } from '@/components/locked';
+import { StageList } from '@/components/stage-list';
+import { planRun } from '@/features/history/stats';
 import { WORKOUT_LABEL, WORKOUT_POINTS, findWorkout, intervalCount, stageIsOpen, workoutTimeline } from '@/features/training/plan';
 import type { TimelineKind } from '@/features/training/plan';
+import { useActivities } from '@/hooks/use-live-activity';
 import { primeLocation } from '@/services/location';
 import { useSession } from '@/stores/session';
-import { formatDayMonth, formatDistanceKm } from '@/utils/format';
+import { formatClock, formatDayMonth, formatDistanceKm, formatPace } from '@/utils/format';
 
 export function Workout() {
   const { sessionId = '' } = useParams();
   const profile = useSession((state) => state.profile);
   const workout = useMemo(() => (profile?.plan ? findWorkout(profile, sessionId) : null), [profile, sessionId]);
   const timeline = useMemo(() => (workout ? workoutTimeline(workout) : []), [workout]);
+  const activities = useActivities();
+  const run = useMemo(() => (workout ? planRun(activities.data ?? [], workout) : null), [activities.data, workout]);
 
   if (!profile?.plan) {
     return (
@@ -74,6 +79,40 @@ export function Workout() {
         </div>
       </section>
 
+      {done ? (
+        <section className="run-result">
+          <div className="mission-head">
+            <h2>Sua corrida</h2>
+            {run ? <Link to={`/atividade/${run.clientId}`}>Ver mapa</Link> : null}
+          </div>
+          {run ? (
+            <div className="run-stats">
+              <p>
+                <span>Distância</span>
+                <strong>{formatDistanceKm(run.distanceMeters, 2)} km</strong>
+              </p>
+              <p>
+                <span>Tempo</span>
+                <strong>{formatClock(run.movingSeconds)}</strong>
+              </p>
+              <p>
+                <span>Ritmo</span>
+                <strong>{formatPace(run.averagePaceSecondsPerKm)}/km</strong>
+              </p>
+              <p>
+                <span>Calorias</span>
+                <strong>{run.calories} kcal</strong>
+              </p>
+            </div>
+          ) : activities.isPending ? (
+            <p className="muted">Carregando a corrida.</p>
+          ) : (
+            <p className="muted">Esse treino foi marcado como feito, sem uma corrida gravada. Refazer grava uma nova e ela passa a valer neste plano.</p>
+          )}
+          {run?.stages && run.stages.length > 0 ? <StageList stages={run.stages} /> : null}
+        </section>
+      ) : null}
+
       <div className="mission-head">
         <h2>Passo a passo</h2>
         <span>{blocks} blocos</span>
@@ -124,7 +163,7 @@ export function Workout() {
       {open ? (
         <div className="mission-cta">
           <Link className="btn primary" to={`/treino/${workout.id}/guiado`} onClick={() => primeLocation()}>
-            <Play /> {done ? 'Correr de novo' : 'Começar treino'}
+            <Play /> {done ? 'Refazer treino' : 'Começar treino'}
           </Link>
         </div>
       ) : (

@@ -3,7 +3,7 @@ import { collection, doc, getDocs, writeBatch } from 'firebase/firestore';
 import { queryClient } from '@/services/query-client';
 import { firebaseAuth, firebaseConfigured, firebaseDb } from '@/services/firebase/app';
 import { getActivity, listUnsynced, markSynced, saveCompletedActivity } from '@/services/storage/database';
-import type { Activity, TrackPoint } from '@/types/domain';
+import type { Activity, ActivityStage, TrackPoint } from '@/types/domain';
 
 const CHUNK_SIZE = 300;
 
@@ -43,9 +43,16 @@ async function downloadActivities(uid: string, email: string): Promise<number> {
   const snapshot = await getDocs(collection(database, 'users', uid, 'activities'));
   let saved = 0;
   for (const item of snapshot.docs) {
-    const existing = await getActivity(item.id);
-    if (existing) continue;
     const data = item.data() as Activity & { pointCount?: number };
+    const remoteStages = readStages(data.stages);
+    const existing = await getActivity(item.id);
+    if (existing) {
+      if (remoteStages.length > 0 && (!existing.stages || existing.stages.length === 0)) {
+        await saveCompletedActivity({ ...existing, stages: remoteStages });
+        saved += 1;
+      }
+      continue;
+    }
     const chunks = await getDocs(collection(database, 'users', uid, 'activities', item.id, 'chunks'));
     const points = chunks.docs
       .sort((left, right) => left.id.localeCompare(right.id))
@@ -64,6 +71,16 @@ async function downloadActivities(uid: string, email: string): Promise<number> {
     saved += 1;
   }
   return saved;
+}
+
+function readStages(value: unknown): ActivityStage[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const stage = item as ActivityStage;
+    if (typeof stage.id !== 'string' || typeof stage.label !== 'string' || typeof stage.seconds !== 'number') return [];
+    return [stage];
+  });
 }
 
 function chunk(points: TrackPoint[]): TrackPoint[][] {

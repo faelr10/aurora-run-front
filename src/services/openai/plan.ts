@@ -505,6 +505,7 @@ function normalizeWorkout(raw: RawWorkout, stageIndex: number, athlete: Athlete)
     durationMinutes: Math.max(1, Math.ceil((Math.round(durationMinutes) * 60 + extraSeconds) / 60)),
     steps,
     completedOn: null,
+    activityId: null,
   };
 }
 

@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { RouteMap } from '@/components/route-map';
+import { StageList } from '@/components/stage-list';
+import { bestSplits, renderShareCard, type ShareVariant } from '@/features/share/card';
 import { useActivity } from '@/hooks/use-live-activity';
 import { deleteActivity } from '@/services/storage/database';
 import type { Activity } from '@/types/domain';
@@ -23,19 +25,56 @@ function RunSummary() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [menu, setMenu] = useState(false);
+  const [card, setCard] = useState<{ url: string; file: File } | null>(null);
+  const [sharing, setSharing] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [variant, setVariant] = useState<ShareVariant>('summary');
 
-  async function share() {
-    if (!activity) return;
-    const text = `${activity.title}: ${formatDistanceKm(activity.distanceMeters)} km em ${formatClock(activity.movingSeconds)}, ritmo ${formatPace(activity.averagePaceSecondsPerKm)}/km.`;
-    if (typeof navigator.share === 'function') {
+  async function share(nextVariant: ShareVariant = variant) {
+    if (!activity || sharing) return;
+    setSharing(true);
+    setShareError(null);
+    setVariant(nextVariant);
+    try {
+      const blob = await renderShareCard(activity, nextVariant);
+      const file = new File([blob], 'aurora-corrida.png', { type: 'image/png' });
+      setCard((current) => {
+        if (current) URL.revokeObjectURL(current.url);
+        return { url: URL.createObjectURL(blob), file };
+      });
+    } catch (cause) {
+      setShareError(cause instanceof Error ? cause.message : 'Não foi possível gerar a imagem.');
+    } finally {
+      setSharing(false);
+    }
+  }
+
+  function closeShare() {
+    setCard((current) => {
+      if (current) URL.revokeObjectURL(current.url);
+      return null;
+    });
+  }
+
+  async function publish() {
+    if (!card) return;
+    if (navigator.canShare?.({ files: [card.file] })) {
       try {
-        await navigator.share({ title: activity.title, text });
+        await navigator.share({ files: [card.file], title: activity?.title ?? 'Aurora Run' });
       } catch {
         // The share sheet was dismissed.
       }
       return;
     }
-    await navigator.clipboard?.writeText(text);
+    saveImage();
+  }
+
+  function saveImage() {
+    if (!card) return;
+    const link = document.createElement('a');
+    link.href = card.url;
+    link.download = card.file.name;
+    link.click();
   }
 
   async function remove() {
@@ -74,13 +113,53 @@ function RunSummary() {
 
       {query.isPending ? <p className="muted">Carregando corrida.</p> : null}
       {!query.isPending && !activity ? <p className="muted">Essa corrida não está neste aparelho.</p> : null}
-      {activity ? <SummaryBody activity={activity} onShare={() => void share()} /> : null}
+      {activity ? <SummaryBody activity={activity} sharing={sharing} onShare={() => void share()} /> : null}
+      {shareError ? <p className="error">{shareError}</p> : null}
+      {card ? (
+        <div className="share-sheet" role="dialog" aria-label="Imagem para o Instagram">
+          <img src={card.url} alt="Imagem da corrida para publicar" />
+          <div>
+            {activity && bestSplits(activity).length ? (
+              <div className="share-variants" role="group" aria-label="Modelo da imagem">
+                {(
+                  [
+                    ['summary', 'Resumo'],
+                    ['best', 'Melhores kms'],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    className={value === variant ? 'on' : undefined}
+                    type="button"
+                    aria-pressed={value === variant}
+                    disabled={sharing}
+                    onClick={() => void share(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            <button className="btn primary" type="button" onClick={() => void publish()}>
+              Enviar para o Instagram
+            </button>
+            <button className="btn outline" type="button" onClick={saveImage}>
+              Salvar imagem
+            </button>
+            <button className="btn text" type="button" onClick={closeShare}>
+              Fechar
+            </button>
+            <p>No celular, escolha o Instagram na lista que abrir.</p>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
 
-function SummaryBody({ activity, onShare }: { activity: Activity; onShare: () => void }) {
+function SummaryBody({ activity, sharing, onShare }: { activity: Activity; sharing: boolean; onShare: () => void }) {
   const date = formatRunDate(activity.startedAt);
+  const fastestKm = bestSplits(activity)[0]?.kilometer;
 
   return (
     <>
@@ -127,35 +206,42 @@ function SummaryBody({ activity, onShare }: { activity: Activity; onShare: () =>
           </div>
         </div>
       </section>
+      {activity.stages && activity.stages.length > 0 ? (
+        <section className="summary-card stage-card">
+          <strong>Etapas</strong>
+          <StageList stages={activity.stages} />
+        </section>
+      ) : null}
       <section className="summary-card partials-card">
-        <i aria-hidden="true">
-          <svg viewBox="0 0 24 24">
-            <path d="M5 16v3M12 10v9M19 6v13" />
-          </svg>
-        </i>
-        <div>
+        <header>
+          <i aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M5 16v3M12 10v9M19 6v13" />
+            </svg>
+          </i>
           <strong>Parciais por km</strong>
-          {activity.splits.length > 0 ? (
-            <ul>
-              {activity.splits.map((split) => (
-                <li key={split.kilometer}>
-                  <span>km {split.kilometer}</span>
-                  <b>{formatPace(split.paceSecondsPerKm)}/km</b>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>Aparecem a partir do primeiro km completo.</p>
-          )}
-        </div>
+          {activity.splits.length > 0 ? <span>min/km</span> : null}
+        </header>
+        {activity.splits.length > 0 ? (
+          <ul>
+            {activity.splits.map((split) => (
+              <li key={split.kilometer} className={split.kilometer === fastestKm ? 'best' : undefined}>
+                <span>KM {split.kilometer}</span>
+                <b>{formatPace(split.paceSecondsPerKm)}</b>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>Aparecem a partir do primeiro km completo.</p>
+        )}
       </section>
-      <button className="summary-share" type="button" onClick={onShare}>
+      <button className="summary-share" type="button" onClick={onShare} disabled={sharing}>
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 16V5" />
           <path d="m8 8 4-4 4 4" />
           <path d="M6 13v5a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-5" />
         </svg>
-        Compartilhar corrida
+        {sharing ? 'Gerando imagem...' : 'Compartilhar no Instagram'}
       </button>
     </>
   );
