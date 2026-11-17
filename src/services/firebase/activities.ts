@@ -49,9 +49,9 @@ async function downloadActivities(uid: string, email: string): Promise<number> {
     const existing = await getActivity(item.id);
     if (existing) {
       const summary = summaryFromRemote(data);
-      const withStages = remoteStages.length > 0 && (!existing.stages || existing.stages.length === 0);
-      if (withStages || summaryChanged(existing, summary)) {
-        await saveCompletedActivity({ ...existing, ...summary, ...(withStages ? { stages: remoteStages } : {}) });
+      const stages = remoteStages.length > 0 && JSON.stringify(existing.stages ?? []) !== JSON.stringify(remoteStages) ? remoteStages : null;
+      if (stages || summaryChanged(existing, summary)) {
+        await saveCompletedActivity({ ...existing, ...summary, ...(stages ? { stages } : {}) });
         saved += 1;
       }
       continue;
