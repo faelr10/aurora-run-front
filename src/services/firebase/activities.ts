@@ -2,7 +2,7 @@ import { collection, doc, getDocs, writeBatch } from 'firebase/firestore';
 
 import { queryClient } from '@/services/query-client';
 import { firebaseAuth, firebaseConfigured, firebaseDb } from '@/services/firebase/app';
-import { getActivity, listUnsynced, markSynced, saveCompletedActivity } from '@/services/storage/database';
+import { deleteActivity, deletedActivityIds, forgetDeleted, getActivity, listUnsynced, markSynced, saveCompletedActivity } from '@/services/storage/database';
 import type { Activity, ActivityStage, TrackPoint } from '@/types/domain';
 
 const CHUNK_SIZE = 300;
@@ -18,6 +18,7 @@ export async function syncFirebaseActivities(email: string): Promise<void> {
   }
 
   const saved = await downloadActivities(user.uid, email);
+  await retryDeleted(user.uid);
   if (pending.length > 0 || saved > 0) {
     await queryClient.invalidateQueries({ queryKey: ['activities'] });
     await queryClient.invalidateQueries({ queryKey: ['activity'] });
@@ -42,8 +43,17 @@ async function uploadActivity(uid: string, activity: Activity): Promise<void> {
 async function downloadActivities(uid: string, email: string): Promise<number> {
   const database = firebaseDb();
   const snapshot = await getDocs(collection(database, 'users', uid, 'activities'));
+  const deleted = new Set(deletedActivityIds());
   let saved = 0;
   for (const item of snapshot.docs) {
+    if (deleted.has(item.id)) {
+      const existing = await getActivity(item.id);
+      if (existing) {
+        await deleteActivity(item.id);
+        saved += 1;
+      }
+      continue;
+    }
     const data = item.data() as Activity & { pointCount?: number };
     const remoteStages = readStages(data.stages);
     const existing = await getActivity(item.id);
@@ -104,6 +114,34 @@ function readStages(value: unknown): ActivityStage[] {
     if (typeof stage.id !== 'string' || typeof stage.label !== 'string' || typeof stage.seconds !== 'number') return [];
     return [stage];
   });
+}
+
+async function retryDeleted(uid: string): Promise<void> {
+  for (const clientId of deletedActivityIds()) {
+    try {
+      await deleteRemoteActivity(uid, clientId);
+      forgetDeleted(clientId);
+    } catch {
+      // The local copy stays gone. The next refresh tries the remote delete again.
+    }
+  }
+}
+
+export async function deleteFirebaseActivity(clientId: string): Promise<boolean> {
+  if (!firebaseConfigured()) return false;
+  const user = firebaseAuth().currentUser;
+  if (!user) return false;
+  await deleteRemoteActivity(user.uid, clientId);
+  return true;
+}
+
+async function deleteRemoteActivity(uid: string, clientId: string): Promise<void> {
+  const database = firebaseDb();
+  const chunks = await getDocs(collection(database, 'users', uid, 'activities', clientId, 'chunks'));
+  const batch = writeBatch(database);
+  chunks.docs.forEach((item) => batch.delete(item.ref));
+  batch.delete(doc(database, 'users', uid, 'activities', clientId));
+  await batch.commit();
 }
 
 function chunk(points: TrackPoint[]): TrackPoint[][] {

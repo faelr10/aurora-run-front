@@ -1,5 +1,5 @@
 import { apiEnabled, downloadActivities, uploadActivity } from '@/services/api/client';
-import { getActivity, listUnsynced, markSynced, saveCompletedActivity } from '@/services/storage/database';
+import { deletedActivityIds, getActivity, listUnsynced, markSynced, saveCompletedActivity } from '@/services/storage/database';
 
 export async function syncActivities(email: string): Promise<void> {
   if (!apiEnabled()) return;
@@ -10,7 +10,9 @@ export async function syncActivities(email: string): Promise<void> {
   }
 
   const remote = await downloadActivities();
+  const deleted = new Set(deletedActivityIds());
   for (const activity of remote) {
+    if (deleted.has(activity.clientId)) continue;
     const existing = await getActivity(activity.clientId);
     if (existing) continue;
     await saveCompletedActivity({

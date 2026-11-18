@@ -15,6 +15,7 @@ export type AccountRecord = {
 
 const DB_NAME = 'aurora';
 const DB_VERSION = 1;
+const DELETED_KEY = 'aurora.deleted-activities';
 
 let databasePromise: Promise<IDBDatabase> | null = null;
 let queue: Promise<unknown> = Promise.resolve();
@@ -255,6 +256,25 @@ export function finishRecording(clientId: string, movingSeconds: number, endedAt
       ...(stages && stages.length > 0 ? { stages } : {}),
     });
   });
+}
+
+export function deletedActivityIds(): string[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(DELETED_KEY) ?? '[]') as unknown;
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+export function rememberDeleted(clientId: string): void {
+  const ids = new Set(deletedActivityIds());
+  ids.add(clientId);
+  localStorage.setItem(DELETED_KEY, JSON.stringify([...ids].slice(-200)));
+}
+
+export function forgetDeleted(clientId: string): void {
+  localStorage.setItem(DELETED_KEY, JSON.stringify(deletedActivityIds().filter((id) => id !== clientId)));
 }
 
 export function deleteActivity(clientId: string): Promise<void> {

@@ -2,11 +2,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
+import { ActivityEditor } from '@/components/activity-editor';
 import { RouteMap } from '@/components/route-map';
 import { StageList } from '@/components/stage-list';
 import { bestSplits, renderShareCard, type ShareVariant } from '@/features/share/card';
 import { useActivity } from '@/hooks/use-live-activity';
-import { deleteActivity } from '@/services/storage/database';
+import { deleteFirebaseActivity } from '@/services/firebase/activities';
+import { deleteActivity, forgetDeleted, rememberDeleted } from '@/services/storage/database';
 import type { Activity } from '@/types/domain';
 import { formatClock, formatDistanceKm, formatPace, formatWeekday, parseDateKey } from '@/utils/format';
 
@@ -25,6 +27,9 @@ function RunSummary() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [menu, setMenu] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const [card, setCard] = useState<{ url: string; file: File } | null>(null);
   const [sharing, setSharing] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
@@ -78,10 +83,19 @@ function RunSummary() {
   }
 
   async function remove() {
-    if (!activity) return;
-    await deleteActivity(activity.clientId);
-    await queryClient.invalidateQueries({ queryKey: ['activities'] });
-    navigate('/evolucao');
+    if (!activity || removing) return;
+    setRemoving(true);
+    rememberDeleted(activity.clientId);
+    try {
+      await deleteActivity(activity.clientId);
+      const removed = await deleteFirebaseActivity(activity.clientId).catch(() => false);
+      if (removed) forgetDeleted(activity.clientId);
+      await queryClient.invalidateQueries({ queryKey: ['activities'] });
+      navigate('/evolucao');
+    } catch (cause) {
+      setShareError(cause instanceof Error ? cause.message : 'Não foi possível excluir a corrida.');
+      setRemoving(false);
+    }
   }
 
   return (
@@ -103,8 +117,17 @@ function RunSummary() {
           </button>
           {menu ? (
             <div className="summary-menu">
-              <button type="button" onClick={() => void remove()}>
-                Excluir corrida
+              <button
+                type="button"
+                onClick={() => {
+                  setMenu(false);
+                  setEditing(true);
+                }}
+              >
+                Editar corrida
+              </button>
+              <button type="button" className="danger" disabled={removing} onClick={() => (confirmDelete ? void remove() : setConfirmDelete(true))}>
+                {removing ? 'Excluindo...' : confirmDelete ? 'Confirmar exclusão' : 'Excluir corrida'}
               </button>
             </div>
           ) : null}
@@ -115,6 +138,17 @@ function RunSummary() {
       {!query.isPending && !activity ? <p className="muted">Essa corrida não está neste aparelho.</p> : null}
       {activity ? <SummaryBody activity={activity} sharing={sharing} onShare={() => void share()} /> : null}
       {shareError ? <p className="error">{shareError}</p> : null}
+      {editing && activity ? (
+        <ActivityEditor
+          activity={activity}
+          onClose={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false);
+            void queryClient.invalidateQueries({ queryKey: ['activity', activity.clientId] });
+            void queryClient.invalidateQueries({ queryKey: ['activities'] });
+          }}
+        />
+      ) : null}
       {card ? (
         <div className="share-sheet" role="dialog" aria-label="Imagem para o Instagram">
           <img src={card.url} alt="Imagem da corrida para publicar" />

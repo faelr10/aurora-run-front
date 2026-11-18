@@ -118,8 +118,17 @@ export function recordedStages(steps: RuntimeStep[], snapshot: EngineSnapshot): 
   return saved;
 }
 
+export function effortNote(seconds: number, meters: number): string | null {
+  if (seconds <= 0 && meters <= 0) return null;
+  const time = formatEffort(seconds);
+  return meters > 0 ? `${formatMeters(meters)} em ${time}` : time;
+}
+
 export function stageNote(stage: ActivityStage): string {
-  if (stage.status === 'skipped') return 'pulado';
+  if (stage.status === 'skipped') {
+    const effort = effortNote(stage.seconds, stage.meters);
+    return effort ? `pulado · ${effort}` : 'pulado';
+  }
   const time = formatEffort(stage.seconds);
   if (stage.status === 'partial') return stage.seconds > 0 || stage.meters > 0 ? `${time} · interrompido` : 'interrompido';
   if (stage.kind === 'work' && stage.onTarget === true) return `${time} · no tempo`;
@@ -179,6 +188,16 @@ function advance(
     onTarget: status === 'done' ? judgeStep(step, seconds, meters) : null,
   };
   const results = [...base.results, result];
-  if (base.stepIndex >= steps.length - 1) return { ...base, results, status: 'finished' };
-  return { ...base, results, stepIndex: base.stepIndex + 1, stepMovingSeconds: 0, stepDistanceMeters: 0 };
+  const nextIndex = base.stepIndex + 1;
+  if (nextIndex >= steps.length) return { ...base, results, status: 'finished' };
+  const nextStep = steps[nextIndex];
+  const carried = carriedDistance(step, nextStep, meters);
+  const started = { ...base, results, stepIndex: nextIndex, stepMovingSeconds: 0, stepDistanceMeters: carried };
+  if (nextStep.target.type === 'distance' && carried >= nextStep.target.meters) return advance(started, steps, started, 'done');
+  return started;
+}
+
+function carriedDistance(finished: RuntimeStep, next: RuntimeStep, meters: number): number {
+  if (finished.kind !== 'warmup' || next.kind !== 'steady' || next.target.type !== 'distance') return 0;
+  return Math.max(0, meters);
 }

@@ -6,6 +6,7 @@ import { coachLine, introLine, kilometerLine, paceState } from '@/features/train
 import {
   completeStep,
   recordedStages,
+  effortNote,
   createEngine,
   finishEngine,
   pauseEngine,
@@ -60,6 +61,7 @@ function GuidedRun() {
   const session = useMemo(() => (profile?.plan ? findWorkout(profile, sessionId) : null), [profile, sessionId]);
   const steps = useMemo(() => (session ? toRuntimeSteps(session) : []), [session]);
   const [engine, setEngine] = useState(createEngine);
+  const [confirmSkip, setConfirmSkip] = useState(false);
   const live = useLiveActivity({
     source: 'guided',
     title: session?.title ?? 'Treino guiado',
@@ -125,6 +127,10 @@ function GuidedRun() {
       if (engine.status === 'running' && current?.kind !== 'work') say(kilometerLine(km, paceRef.current), preferencesRef.current);
     }
   }, [engine, steps]);
+
+  useEffect(() => {
+    setConfirmSkip(false);
+  }, [engine.stepIndex, engine.status]);
 
   useEffect(() => {
     if (engine.status !== 'finished' || finished.current) return;
@@ -296,7 +302,7 @@ function GuidedRun() {
           </button>
         </div>
         <p>
-          <button type="button" onClick={() => setEngine((current) => skip(current, steps))}>
+          <button type="button" onClick={() => setConfirmSkip(true)}>
             Pular etapa
           </button>
           <button type="button" onClick={endWorkout}>
@@ -304,6 +310,26 @@ function GuidedRun() {
           </button>
         </p>
       </div>
+      {confirmSkip ? (
+        <div className="coach-confirm" role="dialog" aria-label="Confirmar pular etapa">
+          <div>
+            <h2>Pular {step.label}?</h2>
+            <p>O tempo e a distância feitos até agora ficam salvos. A etapa entra como pulada e o treino segue na próxima.</p>
+            <button type="button" onClick={() => setConfirmSkip(false)}>
+              Continuar etapa
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setConfirmSkip(false);
+                setEngine((current) => skip(current, steps));
+              }}
+            >
+              Pular mesmo assim
+            </button>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
@@ -327,7 +353,10 @@ function StepRow({ step, result, current }: { step: RuntimeStep; result: StepRes
 function rowNote(step: RuntimeStep, result: StepResult | undefined): string {
   if (!result && step.kind === 'recovery' && step.target.type === 'time') return formatEffort(step.target.seconds);
   if (!result) return stepGoal(step);
-  if (result.status === 'skipped') return 'pulado';
+  if (result.status === 'skipped') {
+    const effort = effortNote(result.seconds, result.meters);
+    return effort ? `pulado · ${effort}` : 'pulado';
+  }
   const time = formatEffort(result.seconds);
   if (step.kind !== 'work' || result.onTarget === null) {
     return step.target.type === 'distance' && result.meters > 0 ? `${formatMeters(result.meters)} em ${time}` : time;

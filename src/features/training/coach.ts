@@ -20,11 +20,11 @@ export function coachLine(prev: EngineSnapshot, next: EngineSnapshot, steps: Run
     const done = steps.find((step) => step.id === result.stepId);
     const moreWork = steps.slice(next.results.length).some((step) => step.kind === 'work');
     const parts = done ? [resultLine(done, result, moreWork)] : [];
-    parts.push(next.status === 'finished' ? summaryLine(next.results, steps) : startLine(steps[next.stepIndex]));
+    parts.push(next.status === 'finished' ? summaryLine(next.results, steps) : startLine(steps[next.stepIndex], next.stepDistanceMeters));
     return parts.filter(Boolean).join(' ');
   }
   if (next.status === 'finished' && prev.status !== 'finished') return summaryLine(next.results, steps);
-  if (prev.status === 'countdown' && next.status === 'running') return startLine(steps[next.stepIndex]);
+  if (prev.status === 'countdown' && next.status === 'running') return startLine(steps[next.stepIndex], next.stepDistanceMeters);
   if (next.status !== 'running' || prev.stepIndex !== next.stepIndex) return null;
 
   const step = steps[next.stepIndex];
@@ -77,15 +77,23 @@ export function targetSpeech(step: RuntimeStep): string {
   return spokenDuration(step.target.seconds);
 }
 
-function startLine(step: RuntimeStep | undefined): string {
+function startLine(step: RuntimeStep | undefined, coveredMeters = 0): string {
   if (!step) return '';
+  if (step.target.type === 'distance' && coveredMeters > 0 && coveredMeters < step.target.meters) {
+    const left = step.target.meters - coveredMeters;
+    return `${step.label}: faltam ${spokenMeters(left)}. Os ${spokenMeters(coveredMeters)} do aquecimento já entraram na conta.`;
+  }
   if (step.kind === 'work') return `Vai! ${step.label}. ${capitalize(targetSpeech(step))}.`;
   if (step.kind === 'recovery') return `Descanso de ${targetSpeech(step)}, ${step.manner ?? 'caminhando'}.`;
   return `${step.label}: ${targetSpeech(step)}. ${step.detail}`;
 }
 
 function resultLine(step: RuntimeStep, result: StepResult, moreWork: boolean): string {
-  if (result.status === 'skipped') return `${step.label} pulado.`;
+  if (result.status === 'skipped') {
+    if (result.seconds <= 0 && result.meters <= 0) return `${step.label} pulado.`;
+    const effort = result.meters > 0 ? `${spokenMeters(result.meters)} em ${spokenDuration(result.seconds)}` : spokenDuration(result.seconds);
+    return `${step.label} pulado. Até aqui, ${effort}.`;
+  }
   if (step.kind === 'recovery') return '';
   const time = spokenDuration(result.seconds);
   if (step.kind !== 'work') return `${step.label} concluído em ${time}.`;
