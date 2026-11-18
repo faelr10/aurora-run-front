@@ -40,6 +40,42 @@ export function monthDistance(activities: Activity[], today = new Date()): numbe
     .reduce((sum, activity) => sum + activity.distanceMeters, 0);
 }
 
+export type WeekDay = {
+  key: string;
+  label: string;
+  number: number;
+  ran: boolean;
+  today: boolean;
+};
+
+const weekLetters = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
+
+export function currentWeek(activities: Activity[], today = new Date()): WeekDay[] {
+  const start = mondayOf(today);
+  const todayKey = toDateKey(today);
+  const ran = new Set(activities.map((activity) => activity.startedAt.slice(0, 10)));
+  return weekLetters.map((label, index) => {
+    const date = addDays(start, index);
+    const key = toDateKey(date);
+    return { key, label, number: date.getDate(), ran: ran.has(key), today: key === todayKey };
+  });
+}
+
+export function activitiesBetween(activities: Activity[], from: Date, to: Date): Activity[] {
+  const start = from.getTime();
+  const end = to.getTime();
+  return activities.filter((activity) => {
+    const time = Date.parse(activity.startedAt);
+    return time >= start && time < end;
+  });
+}
+
+export function bestPace(activities: Activity[]): number | null {
+  const paces = activities.map((activity) => activity.averagePaceSecondsPerKm).filter((pace) => pace > 0);
+  if (paces.length === 0) return null;
+  return Math.min(...paces);
+}
+
 export function weeklyPace(
   activities: Activity[],
   weeks = 8,

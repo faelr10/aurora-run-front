@@ -1394,3 +1394,103 @@ h2 { font-size: 22px; letter-spacing: -0.4px; }
   .coach-pause, .coach-check { min-height: 50px; font-size: 15px; }
   .coach-actions p button { font-size: 13px; }
 }
+
+.evo { gap: 18px; padding-top: 22px; }
+.evo .brand { color: #d6ff3e; }
+.evo h1 { font-size: 34px; letter-spacing: -1px; }
+.evo-filters { display: flex; gap: 8px; }
+.evo-filters button {
+  min-height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: #1c221e;
+  color: #f4f7f5;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+}
+.evo-filters button.on { background: #d6ff3e; color: #101412; }
+.evo-month {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  align-items: center;
+  padding: 22px 18px 22px 22px;
+  border-radius: 28px;
+  background: #d6ff3e;
+  color: #101412;
+}
+.evo-month p { margin: 0; font-size: 52px; font-weight: 800; letter-spacing: -2px; line-height: 0.95; }
+.evo-month > div:first-child small { margin-left: 4px; font-size: 22px; font-weight: 700; letter-spacing: 0; }
+.evo-month > div:first-child span { display: block; margin-top: 8px; color: #243026; font-size: 15px; font-weight: 600; }
+.evo-month > div:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 6px 0;
+  padding-left: 18px;
+  border-left: 1px solid rgba(16, 20, 18, 0.35);
+}
+.evo-month > div:last-child p { font-size: 28px; letter-spacing: -0.8px; }
+.evo-month > div:last-child p + span { margin-bottom: 10px; }
+.evo-month > div:last-child span { color: #243026; font-size: 14px; font-weight: 600; }
+.evo-block { display: flex; flex-direction: column; gap: 14px; }
+.evo-block header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.evo-block h2 { margin: 0; font-size: 22px; }
+.evo-block header span, .evo-block header button {
+  border: 0;
+  background: #1c221e;
+  color: #f4f7f5;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+.evo-week { display: grid; grid-template-columns: repeat(7, 1fr); }
+.evo-week div { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.evo-week span { color: #8d9791; font-size: 13px; font-weight: 700; }
+.evo-week strong, .evo-week i { width: 34px; height: 34px; }
+.evo-week strong {
+  border-radius: 50%;
+  background: #d6ff3e;
+  color: #101412;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+}
+.evo-week svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.evo-paces { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.evo-paces article, .evo-records article {
+  min-width: 0;
+  background: #141816;
+  border-radius: 18px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.evo-records article { padding: 12px 10px; }
+.evo-paces span, .evo-records header span, .evo-records p, .evo-runs span { color: #8d9791; font-size: 13px; }
+.evo-paces strong { font-size: 28px; letter-spacing: -0.8px; }
+.evo-paces small { margin-left: 2px; color: #8d9791; font-size: 14px; font-weight: 700; }
+.evo-records { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.evo-records header { display: flex; align-items: center; justify-content: space-between; }
+.evo-records header svg { width: 16px; height: 16px; fill: none; stroke: #d6ff3e; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.evo-records article.locked header svg { stroke: #8d9791; }
+.evo-records strong { font-size: 16px; letter-spacing: -0.4px; line-height: 1.15; }
+.evo-records p { margin: 0; font-size: 11px; line-height: 1.25; }
+.evo-runs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.evo-runs a { display: grid; grid-template-columns: 42px 1fr auto; gap: 12px; align-items: center; padding: 12px 0; }
+.evo-runs i {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: #141816;
+  color: #d6ff3e;
+  display: grid;
+  place-items: center;
+}
+.evo-runs svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.evo-runs a div:last-child { text-align: right; }
+.evo-runs strong { display: block; }
