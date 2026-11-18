@@ -310,8 +310,9 @@ export function getActivity(clientId: string): Promise<Activity | null> {
 
 export function listUnsynced(ownerEmail: string): Promise<Activity[]> {
   return enqueue(async () => {
+    const deleted = new Set(deletedActivityIds());
     const rows = await readActivities(ownerEmail.trim().toLowerCase());
-    return rows.filter((activity) => activity.status === 'completed' && activity.syncedAt == null && !activity.demo);
+    return rows.filter((activity) => activity.status === 'completed' && activity.syncedAt == null && !activity.demo && !deleted.has(activity.clientId));
   });
 }
 

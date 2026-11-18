@@ -1,16 +1,18 @@
-import { collection, doc, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDocFromServer, getDocsFromServer, writeBatch, type DocumentReference } from 'firebase/firestore';
 
 import { queryClient } from '@/services/query-client';
-import { firebaseAuth, firebaseConfigured, firebaseDb } from '@/services/firebase/app';
-import { deleteActivity, deletedActivityIds, forgetDeleted, getActivity, listUnsynced, markSynced, saveCompletedActivity } from '@/services/storage/database';
+import { waitForFirebaseUser } from '@/services/firebase/account';
+import { firebaseConfigured, firebaseDb } from '@/services/firebase/app';
+import { deleteActivity, deletedActivityIds, forgetDeleted, getActivity, listActivities, listUnsynced, markSynced, saveCompletedActivity } from '@/services/storage/database';
 import type { Activity, ActivityStage, TrackPoint } from '@/types/domain';
 
 const CHUNK_SIZE = 300;
 
 export async function syncFirebaseActivities(email: string): Promise<void> {
   if (!firebaseConfigured()) return;
-  const user = firebaseAuth().currentUser;
+  const user = await waitForFirebaseUser();
   if (!user) return;
+  await retryDeleted(user.uid);
   const pending = await listUnsynced(email);
   for (const activity of pending) {
     await uploadActivity(user.uid, activity);
@@ -18,7 +20,6 @@ export async function syncFirebaseActivities(email: string): Promise<void> {
   }
 
   const saved = await downloadActivities(user.uid, email);
-  await retryDeleted(user.uid);
   if (pending.length > 0 || saved > 0) {
     await queryClient.invalidateQueries({ queryKey: ['activities'] });
     await queryClient.invalidateQueries({ queryKey: ['activity'] });
@@ -42,8 +43,9 @@ async function uploadActivity(uid: string, activity: Activity): Promise<void> {
 
 async function downloadActivities(uid: string, email: string): Promise<number> {
   const database = firebaseDb();
-  const snapshot = await getDocs(collection(database, 'users', uid, 'activities'));
+  const snapshot = await getDocsFromServer(collection(database, 'users', uid, 'activities'));
   const deleted = new Set(deletedActivityIds());
+  const remoteIds = new Set(snapshot.docs.map((item) => item.id));
   let saved = 0;
   for (const item of snapshot.docs) {
     if (deleted.has(item.id)) {
@@ -66,7 +68,7 @@ async function downloadActivities(uid: string, email: string): Promise<number> {
       }
       continue;
     }
-    const chunks = await getDocs(collection(database, 'users', uid, 'activities', item.id, 'chunks'));
+    const chunks = await getDocsFromServer(collection(database, 'users', uid, 'activities', item.id, 'chunks'));
     const points = chunks.docs
       .sort((left, right) => left.id.localeCompare(right.id))
       .flatMap((chunkDoc) => (chunkDoc.data().points as TrackPoint[] | undefined) ?? []);
@@ -81,6 +83,12 @@ async function downloadActivities(uid: string, email: string): Promise<number> {
       points,
       splits: activity.splits ?? [],
     });
+    saved += 1;
+  }
+  const local = await listActivities(email);
+  for (const activity of local) {
+    if (activity.demo || activity.syncedAt == null || deleted.has(activity.clientId) || remoteIds.has(activity.clientId)) continue;
+    await deleteActivity(activity.clientId);
     saved += 1;
   }
   return saved;
@@ -129,7 +137,7 @@ async function retryDeleted(uid: string): Promise<void> {
 
 export async function deleteFirebaseActivity(clientId: string): Promise<boolean> {
   if (!firebaseConfigured()) return false;
-  const user = firebaseAuth().currentUser;
+  const user = await waitForFirebaseUser();
   if (!user) return false;
   await deleteRemoteActivity(user.uid, clientId);
   return true;
@@ -137,11 +145,16 @@ export async function deleteFirebaseActivity(clientId: string): Promise<boolean>
 
 async function deleteRemoteActivity(uid: string, clientId: string): Promise<void> {
   const database = firebaseDb();
-  const chunks = await getDocs(collection(database, 'users', uid, 'activities', clientId, 'chunks'));
-  const batch = writeBatch(database);
-  chunks.docs.forEach((item) => batch.delete(item.ref));
-  batch.delete(doc(database, 'users', uid, 'activities', clientId));
-  await batch.commit();
+  const activityRef = doc(database, 'users', uid, 'activities', clientId);
+  const chunks = await getDocsFromServer(collection(database, 'users', uid, 'activities', clientId, 'chunks'));
+  const refs: DocumentReference[] = [...chunks.docs.map((item) => item.ref), activityRef];
+  for (let index = 0; index < refs.length; index += 400) {
+    const batch = writeBatch(database);
+    refs.slice(index, index + 400).forEach((ref) => batch.delete(ref));
+    await batch.commit();
+  }
+  const confirmed = await getDocFromServer(activityRef);
+  if (confirmed.exists()) throw new Error('A corrida continua na nuvem.');
 }
 
 function chunk(points: TrackPoint[]): TrackPoint[][] {
